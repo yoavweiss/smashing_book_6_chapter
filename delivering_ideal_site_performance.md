@@ -941,6 +941,7 @@ lower priority.
   run until some milestone is hit (e.g. first paint happened)
 
 A simple version of this, mixing both preload and RAF, may look something like this:
+
 ```
     <script>
         var firstPaintHappened = false;
@@ -1461,15 +1462,21 @@ These enable the browser to pick the right resource, based on the
 device's screen density as well as its viewport dimensions.
 
 Using `x` descriptors to serve a fixed width image may look something like:
+
+```
     <img src="dec_500px.jpg"
         srcset="dec_750px.jpg 1.5x, dec_1000px.jpg 2x, dec_1500px.jpg 3x"
         width="500" alt="The December wallpaper">
+```
 
 Using `w` descriptors to serve an image which can be in many different dimensions:
+
+```
     <img src="panda_fallback.jpg"
          srcset="panda_360.jpg 360w, panda_540.jpg 540w, panda_720.jpg 720w, 
                  panda_1080.jpg 1080w, panda_2160.jpg 2160w, panda_3240.jpg 3240w" 
          alt="A panda eating some bamboo.">
+```
 
 The `sizes` attribute enables us to make the matching even tighter. When
 the browser is requesting the images, it still isn't aware of what their
@@ -1480,13 +1487,18 @@ calculate the ideal resource provided by `srcset` and its `w` descriptors.
 
 The sizes value could be relatively simple, just stating a percentage of
 the viewport, such as:
+
+```
     <img src="tiger_500px.jpg"
         sizes="33vw"
         srcset="tiger_200px.jpg 200w, tiger_500px.jpg 500w, tiger_800px.jpg 800w, 
                 tiger_1000px.jpg 1000w, tiger_1500px.jpg 1500w, tiger_2000px.jpg 2000w"
         alt="Tiger">
+```
 
 It can also become a bit more complex in more involved designs:
+
+```
     <img src="thumb.jpg" 
          sizes="(min-width: 1200px) 235px,
                 (min-width: 641px) 24vw,
@@ -1496,6 +1508,7 @@ It can also become a bit more complex in more involved designs:
                  thumb200.jpg 200w, thumb235.jpg 235w,  
                  thumb300.jpg 300w, thumb470.jpg 470w"
          alt="A rad animal.">
+```
 
 #### Client Hints
 Client Hints is a content negotiation mechanism which can be also be
@@ -1538,11 +1551,13 @@ If you have no server-side control, you can use another variant of the
 responsive images markup to let the browser pick which format it
 supports.
 
+```
 	<picture>
 		<source type="image/webp" srcset="president.webp">
 		<source type="image/vnd.ms-photo" srcset="president.jpxr">
 		<img src="president.jpg" alt="The president fistbumps someone.">
 	</picture>
+```
 
 ## Font subsetting
 Web fonts is another type of content where you can send your users
@@ -1755,6 +1770,7 @@ possible for all CORS anonymous requests (e.g. there's no way to fetch
 fonts as no-cors).
 
 The way you would do that for XHR would be something like:
+
 ```
 var xhr = new XMLHttpRequest();
 xhr.open("GET", "https://www.example.com/data.json");
@@ -1763,6 +1779,7 @@ xhr.send(null);
 ```
 
 For `fetch()`, you'd need to add the credentials parameter to the init JSON:
+
 ```
 fetch("https://www.example.com/data.json", { credentials: 'include' }).then((response) => {
     // Handle response
