@@ -500,13 +500,16 @@ not sent out to the network.</p>
 <p>Typically, browsers will assign higher priorities to rendering-critical resources. In Chrome that translates into the following order:
 HTML, CSS, fonts, JS, in-viewport images, out-of-viewport images.
 Chrome also follows some further heuristics which go beyond what other
-browsers typically do:
-* Blocking scripts which are loaded after an image request was sent out
-  are of lower priority than blocking scripts at the top of the
-page.
-* Async and defer scripts are of even lower priority
-* Preloaded fonts get slightly lower priority than late-discovered
-  fonts, to prevent them contending with render blocking resources.</p>
+browsers typically do:</p>
+
+<ul>
+<li>Blocking scripts which are loaded after an image request was sent out
+are of lower priority than blocking scripts at the top of the
+page.</li>
+<li>Async and defer scripts are of even lower priority</li>
+<li>Preloaded fonts get slightly lower priority than late-discovered
+fonts, to prevent them contending with render blocking resources.</li>
+</ul>
 
 <p>The purpose of these heuristics is to try to estimate the developer's
 intent from various existing signals: the location of the resource on
@@ -814,16 +817,19 @@ on the script element that enables it to be non-blocking, download in
 parallel to other resources, and run whenever it arrives at the browser.</p>
 
 <p>While that sounds great in theory, in practice it is racy and can have
-performance implications:
-* <code>async</code> scripts run whenever they arrive. That means they can run out of order so must not have any dependencies on any other script in the page.
-* Because they run whenever they arrive they can run either before or
-  after the page is first painted, depending on network conditions and
+performance implications:</p>
+
+<ul>
+<li><code>async</code> scripts run whenever they arrive. That means they can run out of order so must not have any dependencies on any other script in the page.</li>
+<li>Because they run whenever they arrive they can run either before or
+after the page is first painted, depending on network conditions and
 network optimizations. This creates a paradox: optimizing your async
 scripts (better compress them or make sure they arrive earlier using
 Server Push or preload) can often result in performance regressions!!
 Arriving earlier to the browser means that their parsing and execution
 (which on mobile can be hefty) is now <a href="https://calendar.perfplanet.com/2016/prefer-defer-over-async/">render blocking</a>, even though their
-download was not!</p>
+download was not!</li>
+</ul>
 
 <p>For that reason, <code>async</code> is a great download mechanism, and should be
 avoided in most cases.</p>
@@ -838,14 +844,17 @@ bottom of the body element, or rely on certain styles to be applied)</p>
 <h4>Defer</h4>
 
 <p>As far as native script mechanisms go, that leaves us with the <code>defer</code>
-attribute. <code>defer</code> has the following characteristics:
-* a deferred script will download without blocking the rendering of the page.
-* Deferred scripts run at a particular point in time, after the DOM
-  tree is complete and before the DOMContentLoaded event fires. That
-means they run after all inline scripts, and can depend on them.
-* Deferred scripts maintain their order of execution to match their
-  order of inclusion in the document, which makes it
-  easier to have dependencies between them.</p>
+attribute. <code>defer</code> has the following characteristics:</p>
+
+<ul>
+<li>a deferred script will download without blocking the rendering of the page.</li>
+<li>Deferred scripts run at a particular point in time, after the DOM
+tree is complete and before the DOMContentLoaded event fires. That
+means they run after all inline scripts, and can depend on them.</li>
+<li>Deferred scripts maintain their order of execution to match their
+order of inclusion in the document, which makes it
+easier to have dependencies between them.</li>
+</ul>
 
 <p>So defer is a reasonable way to make sure scripts will not interfere
 with the page's first render, but those scripts will delay the browser's
@@ -883,16 +892,19 @@ scripts from slowing down you first render. It was born in an age where
 <code>defer</code> and <code>async</code> did not exist, and to be fare, was significantly
 better than the alternative: blocking scripts at the top of the page.</p>
 
-<p>With that said, it's not necessarily the best option. A few downsides:
-* While not as bad as blocking the HTML parser and DOM creation at the
-  top of the document, blocking scripts at the bottom of the page still
-block them, which means DOMContentLoaded will be delayed.
-* Priority-wise blocking scripts at the bottom of the page are
-  downloaded with medium priority in Chromium based browsers, and with
-high priority elsewhere.
-* Scripts at the bottom of the page are discovered late by the browser
-  (after the entire HTML is download and processed). Even in the advent
-of the browser's preloader, their download can start relatively late.</p>
+<p>With that said, it's not necessarily the best option. A few downsides:</p>
+
+<ul>
+<li>While not as bad as blocking the HTML parser and DOM creation at the
+top of the document, blocking scripts at the bottom of the page still
+block them, which means DOMContentLoaded will be delayed.</li>
+<li>Priority-wise blocking scripts at the bottom of the page are
+downloaded with medium priority in Chromium based browsers, and with
+high priority elsewhere.</li>
+<li>Scripts at the bottom of the page are discovered late by the browser
+(after the entire HTML is download and processed). Even in the advent
+of the browser's preloader, their download can start relatively late.</li>
+</ul>
 
 <h4>Dynamically added, async false</h4>
 
@@ -1077,14 +1089,17 @@ There are many decent open source solutions for you to pick from, and
 they can significantly reduce the amount of data your users download by
 default, and make their experience faster.</p>
 
-<p>A few things to note regarding lazy loading solutions:
-* Lazy loading your in-viewport images along with your out-of-viewport
-  images is likely to result in regressions for those images.
-* The amount of in-viewport images may vary widely between different
-  viewports, depending on your application.
-* You need to make sure that when the images do get downloaded, that
-  doesn't cause a relayout of the entire content, as that will introduce
-jank to the scrolling process.</p>
+<p>A few things to note regarding lazy loading solutions:</p>
+
+<ul>
+<li>Lazy loading your in-viewport images along with your out-of-viewport
+images is likely to result in regressions for those images.</li>
+<li>The amount of in-viewport images may vary widely between different
+viewports, depending on your application.</li>
+<li>You need to make sure that when the images do get downloaded, that
+doesn't cause a relayout of the entire content, as that will introduce
+jank to the scrolling process.</li>
+</ul>
 
 <p>The first two points are hard to get right, as they mean you would need
 to automatically generate your HTML based on the device's viewport
@@ -1139,15 +1154,18 @@ you get a nicer blurry image, without paying more in terms of bytes.</p>
 <h3>What to do?</h3>
 
 <p>A few points worth looking into when picking an image lazy loading
-solution:
-* It should get bonus points for using IntersectionObserver, as it'll be
-  likely to be less-janky and more accurate.
-* You should avoid applying lazy-loading for images that are in the
-  viewport for most reasonable viewports your users use.
-* Make sure your images' dimensions are well defined in markup or
-  styles. Alternatively, include an inline placeholder,
+solution:</p>
+
+<ul>
+<li>It should get bonus points for using IntersectionObserver, as it'll be
+likely to be less-janky and more accurate.</li>
+<li>You should avoid applying lazy-loading for images that are in the
+viewport for most reasonable viewports your users use.</li>
+<li>Make sure your images' dimensions are well defined in markup or
+styles. Alternatively, include an inline placeholder,
 which will maintain the layout as well as present something to your
-users while they are waiting for the full image to load.</p>
+users while they are waiting for the full image to load.</li>
+</ul>
 
 <h2>Font-display optional</h2>
 
@@ -1327,13 +1345,16 @@ to decompress data.</p>
 <p>Combining these two efforts will enable us to use compression to get rid
 of most of our unused code and not transport it to our users every time.</p>
 
-<p>Two things are worth noting regarding that:
-* These efforts are both still in their early phases, so it may take a
-  while before you can take advantage of them.
-* Eliminating the bytes over the wire still doesn't prevent us from
-  paying up their parsing costs at runtime. So even if we could use it
+<p>Two things are worth noting regarding that:</p>
+
+<ul>
+<li>These efforts are both still in their early phases, so it may take a
+while before you can take advantage of them.</li>
+<li>Eliminating the bytes over the wire still doesn't prevent us from
+paying up their parsing costs at runtime. So even if we could use it
 today, this should only be a fallback in cases where the removal of
-unused code is not feasible.</p>
+unused code is not feasible.</li>
+</ul>
 
 <h2>Web Packaging</h2>
 
@@ -1612,14 +1633,17 @@ hosts are covered by the navigation connection's certificate
 Server-Alternate-Name, or SAN, extension), then the browser is able to coalesce
 all those connections together on a single host.
 While that is a great way to minimize the number of connections, it
-comes with some hurdles:
-* A DNS request is still required (to verify that these hosts map to a
-  single IP), adding some latency to the process.
-* It's not always easy to convince your IT department to add multiple
-  hosts as your cert's SAN.
-* DNS based load balancing can mean that it's tricky to make sure these
-  hosts always map to the same IPs, and different browsers do different
-things when the hosts map to multiple IPs.</p>
+comes with some hurdles:</p>
+
+<ul>
+<li>A DNS request is still required (to verify that these hosts map to a
+single IP), adding some latency to the process.</li>
+<li>It's not always easy to convince your IT department to add multiple
+hosts as your cert's SAN.</li>
+<li>DNS based load balancing can mean that it's tricky to make sure these
+hosts always map to the same IPs, and different browsers do different
+things when the hosts map to multiple IPs.</li>
+</ul>
 
 <p>The fact that <a href="https://daniel.haxx.se/blog/2016/08/18/http2-connection-coalescing/">different browsers implement slightly different DNS
 requirements</a> makes using this mechanism
@@ -1750,10 +1774,13 @@ coalescing is something you can take advantage of if you have your own
 resource domain.</p>
 
 <p>If you do, you need to make sure that two conditions apply in order for
-the browser to coalesce those connections:
-* The domain needs to be covered under the first party domain's SAN.
-* The domain needs to be DNS resolved onto the same IP as the first
-  party domain.</p>
+the browser to coalesce those connections:</p>
+
+<ul>
+<li>The domain needs to be covered under the first party domain's SAN.</li>
+<li>The domain needs to be DNS resolved onto the same IP as the first
+party domain.</li>
+</ul>
 
 <p>Those are tricky conditions, and cannot always be satisfied (for
 IT/infosec reasons), but if you can make them work, you can enjoy
@@ -2047,42 +2074,45 @@ heavily investing in improving it significantly.</p>
 
 <p>So to wrap up the
 chapter with an optimistic view, here's where I want loading resources
-will be 5 years from now:
-* The QUIC protocol will be standardized and universally deployed. It
-  will resolve many of the underlying protocol issues
-  that have plagued the web for a long while, and which HTTP/2 was the
+will be 5 years from now:</p>
+
+<ul>
+<li>The QUIC protocol will be standardized and universally deployed. It
+will resolve many of the underlying protocol issues
+that have plagued the web for a long while, and which HTTP/2 was the
 first stab at fixing. It will significantly reduce the protocol overhead
 and make transport significantly less sensitive to the network's
-latency.
-* Third parties impact on the network will be significantly limited, as
-  the browser will avoid bandwidth contention between low priority
+latency.</li>
+<li>Third parties impact on the network will be significantly limited, as
+the browser will avoid bandwidth contention between low priority
 resources and high priority ones, by delaying low priority requests, and
 by orchestrating the different connections and streams based on their
-priority.
-* Browsers will also avoid opening multiple connections to the same
-  origin to prevent bandwidth contention. Secondary certs will enable
+priority.</li>
+<li>Browsers will also avoid opening multiple connections to the same
+origin to prevent bandwidth contention. Secondary certs will enable
 sites to easily coalesce their different domains onto the same connection for
-improved prioritization.
-* The third party ecosystem will be significantly more amenable to being
-  iframed for increased performance and security.
-* Feature policy combined with iframes third parties will enable
-  developers to take back control over their user's experience.
-* Lazy loading non-critical content will become significantly easier
-  through new loading paradigms.
-* Early delivery and resource discovery will be fixed using Server Push
-  (with Cache Digests), Preload and priority hints. Build tools will
-will automatically create those instructions for developers at build time.
-* Javascript resources will be bundled using WebPackages, enabling
-  improved compression, caching granularity, and (combined with Cache
-Digests) avoiding to send down resources already in the browser's cache.
-* The combination of compression APIs and Service Workers will enable
-  off-the-shelf delta compression solutions that will significantly
-reduce the amount of framework JS and CSS users have to download.
-* Client Hints with network quality estimations can simplify server side
-  implementations of adaptive congestion control algorithms. QUIC can
+improved prioritization.</li>
+<li>The third party ecosystem will be significantly more amenable to being
+iframed for increased performance and security.</li>
+<li>Feature policy combined with iframes third parties will enable
+developers to take back control over their user's experience.</li>
+<li>Lazy loading non-critical content will become significantly easier
+through new loading paradigms.</li>
+<li>Early delivery and resource discovery will be fixed using Server Push
+(with Cache Digests), Preload and priority hints. Build tools will
+will automatically create those instructions for developers at build time.</li>
+<li>Javascript resources will be bundled using WebPackages, enabling
+improved compression, caching granularity, and (combined with Cache
+Digests) avoiding to send down resources already in the browser's cache.</li>
+<li>The combination of compression APIs and Service Workers will enable
+off-the-shelf delta compression solutions that will significantly
+reduce the amount of framework JS and CSS users have to download.</li>
+<li>Client Hints with network quality estimations can simplify server side
+implementations of adaptive congestion control algorithms. QUIC can
 make it simpler to change the congestion window after receiving the
-request.
-* ???</p>
+request.</li>
+<li>???</li>
+</ul>
 
 <p>These are all things that are currently being discussed and are in
 different phases of the standardization process. Some may not make it,

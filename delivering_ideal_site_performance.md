@@ -499,6 +499,7 @@ Typically, browsers will assign higher priorities to rendering-critical resource
 HTML, CSS, fonts, JS, in-viewport images, out-of-viewport images.
 Chrome also follows some further heuristics which go beyond what other
 browsers typically do:
+
 * Blocking scripts which are loaded after an image request was sent out
   are of lower priority than blocking scripts at the top of the
 page.
@@ -810,6 +811,7 @@ parallel to other resources, and run whenever it arrives at the browser.
 
 While that sounds great in theory, in practice it is racy and can have
 performance implications:
+
 * `async` scripts run whenever they arrive. That means they can run out of order so must not have any dependencies on any other script in the page.
 * Because they run whenever they arrive they can run either before or
   after the page is first painted, depending on network conditions and
@@ -835,6 +837,7 @@ bottom of the body element, or rely on certain styles to be applied)
 #### Defer
 As far as native script mechanisms go, that leaves us with the `defer`
 attribute. `defer` has the following characteristics:
+
 * a deferred script will download without blocking the rendering of the page.
 * Deferred scripts run at a particular point in time, after the DOM
   tree is complete and before the DOMContentLoaded event fires. That
@@ -883,6 +886,7 @@ scripts from slowing down you first render. It was born in an age where
 better than the alternative: blocking scripts at the top of the page.
 
 With that said, it's not necessarily the best option. A few downsides:
+
 * While not as bad as blocking the HTML parser and DOM creation at the
   top of the document, blocking scripts at the bottom of the page still
 block them, which means DOMContentLoaded will be delayed.
@@ -1076,6 +1080,7 @@ they can significantly reduce the amount of data your users download by
 default, and make their experience faster.
 
 A few things to note regarding lazy loading solutions:
+
 * Lazy loading your in-viewport images along with your out-of-viewport
   images is likely to result in regressions for those images.
 * The amount of in-viewport images may vary widely between different
@@ -1141,6 +1146,7 @@ you get a nicer blurry image, without paying more in terms of bytes.
 
 A few points worth looking into when picking an image lazy loading
 solution:
+
 * It should get bonus points for using IntersectionObserver, as it'll be
   likely to be less-janky and more accurate.
 * You should avoid applying lazy-loading for images that are in the
@@ -1327,6 +1333,7 @@ Combining these two efforts will enable us to use compression to get rid
 of most of our unused code and not transport it to our users every time.
 
 Two things are worth noting regarding that:
+
 * These efforts are both still in their early phases, so it may take a
   while before you can take advantage of them.
 * Eliminating the bytes over the wire still doesn't prevent us from
@@ -1617,6 +1624,7 @@ Server-Alternate-Name, or SAN, extension), then the browser is able to coalesce
 all those connections together on a single host.
 While that is a great way to minimize the number of connections, it
 comes with some hurdles:
+
 * A DNS request is still required (to verify that these hosts map to a
   single IP), adding some latency to the process.
 * It's not always easy to convince your IT department to add multiple
@@ -1750,6 +1758,7 @@ resource domain.
 
 If you do, you need to make sure that two conditions apply in order for
 the browser to coalesce those connections:
+
 * The domain needs to be covered under the first party domain's SAN.
 * The domain needs to be DNS resolved onto the same IP as the first
   party domain.
@@ -2035,6 +2044,7 @@ heavily investing in improving it significantly.
 So to wrap up the
 chapter with an optimistic view, here's where I want loading resources
 will be 5 years from now:
+
 * The QUIC protocol will be standardized and universally deployed. It
   will resolve many of the underlying protocol issues
   that have plagued the web for a long while, and which HTTP/2 was the
