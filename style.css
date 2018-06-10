@@ -1,0 +1,6 @@
+@font-face {
+    font-family: 'body_font';
+    src: local("Helvetica");
+}
+body { font-family: body_font }
+img {max-width: 100%}

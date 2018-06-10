@@ -1,3 +1,5 @@
+<p><link rel=stylesheet href=style.css></p>
+
 <h1>Delivering Ideal Site Performance</h1>
 
 <hr />
@@ -12,30 +14,33 @@ years, thinking about what ideal performance would take both on the
 browser side as well as on the server/content side.</p>
 
 <p>Ideal performance would require many different conditions in order to
-happen:
-* Early delivery - Content delivery needs to happen as soon as possible.
-* Priorities - Content delivered should be delivered in the right
-priority, where critical content is delivered before less-critical one.
-* Full bandwidth pipe - The network bandwidth must be 100% used at all
-times until no content delivery is required.
-* Full CPU utilization - The CPU and the browser’s main thread should be
+happen:</p>
+
+<ul>
+<li>Early delivery - Content delivery needs to happen as soon as possible.</li>
+<li>Priorities - Content delivered should be delivered in the right
+priority, where critical content is delivered before less-critical one.</li>
+<li>Full bandwidth pipe - The network bandwidth must be 100% used at all
+times until no content delivery is required.</li>
+<li>Full CPU utilization - The CPU and the browser’s main thread should be
 100% used, as long as processing is required to transform the delivered
 content into pixels on the screen, application behavior, and application
-logic.
-* No CPU Blocking - At the same time, the browser’s main thread should not be blocked by
+logic.</li>
+<li>No CPU Blocking - At the same time, the browser’s main thread should not be blocked by
 long execution tasks at any point in the loading process, in order to
-remain responsive to user input.
-* Minimal Content - Content delivered should be kept to a minimum:
-No unneeded content should be sent to the user and required content should be highly compressed.
-* Contention avoidance - Bandwidth and CPU contention should be avoided
+remain responsive to user input.</li>
+<li>Minimal Content - Content delivered should be kept to a minimum:
+No unneeded content should be sent to the user and required content should be highly compressed.</li>
+<li>Contention avoidance - Bandwidth and CPU contention should be avoided
 between low priority content and high priority one, as well as between
-same priority resources which need to be processed in their entirety.
-* Minimize latency impact - Use a CDN and improve content caching at the
-  client.
-* Control - Make sure that content and in particular third party content
-does not get in the way of your user's experience.
-* Measurement - Making sure that all the above conditions are in fact true
-and perform as expected.</p>
+same priority resources which need to be processed in their entirety.</li>
+<li>Minimize latency impact - Use a CDN and improve content caching at the
+client.</li>
+<li>Control - Make sure that content and in particular third party content
+does not get in the way of your user's experience.</li>
+<li>Measurement - Making sure that all the above conditions are in fact true
+and perform as expected.</li>
+</ul>
 
 <p>This chapter will explore ways to make sure these conditions are
 maintained when loading and executing content on the web. These

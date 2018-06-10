@@ -1,3 +1,4 @@
+<link rel=stylesheet href=style.css>
 
 # Delivering Ideal Site Performance
 
@@ -14,6 +15,7 @@ browser side as well as on the server/content side.
 
 Ideal performance would require many different conditions in order to
 happen:
+
 * Early delivery - Content delivery needs to happen as soon as possible.
 * Priorities - Content delivered should be delivered in the right
 priority, where critical content is delivered before less-critical one.
