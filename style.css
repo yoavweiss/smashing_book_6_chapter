@@ -2,5 +2,14 @@
     font-family: 'body_font';
     src: local("Helvetica");
 }
-body { font-family: body_font }
+body {
+    font-family: body_font;
+    max-width: 60%;
+    margin: auto;
+}
+@media only screen and (max-width: 600px) {
+    body {
+        max-width: 96%;
+    }
+}
 img {max-width: 100%}
