@@ -17,8 +17,7 @@ Ideal performance would require many different conditions in order to
 happen:
 
 * Early delivery - Content delivery needs to happen as soon as possible.
-* Priorities - Content delivered should be delivered in the right
-priority, where critical content is delivered before less-critical one.
+* Priorities - Critical content is delivered before less-critical one.
 * Full bandwidth pipe - The network bandwidth must be 100% used at all
 times until no content delivery is required.
 * Full CPU utilization - The CPU and the browser’s main thread should be
@@ -28,8 +27,7 @@ logic.
 * No CPU Blocking - At the same time, the browser’s main thread should not be blocked by
 long execution tasks at any point in the loading process, in order to
 remain responsive to user input.
-* Minimal Content - Content delivered should be kept to a minimum:
-No unneeded content should be sent to the user and required content should be highly compressed.
+* Minimal Content - No unneeded content should be sent to the user and required content should be highly compressed.
 * Contention avoidance - Bandwidth and CPU contention should be avoided
 between low priority content and high priority one, as well as between
 same priority resources which need to be processed in their entirety.
@@ -58,15 +56,24 @@ on a link or typed something in their URL bar. (or even before that, if
 the application can have high enough confidence that they would)
 
 ## Protocol overhead
-Network protocols have traditionally had latency overhead and connection
-establishment time which delayed the time between the point where they
-could have been delivered and the time they actually were. Recent
-advances in the underlying protocols make that less of an issue.
+Network protocols introduce overhead to network communication. That
+overhead is manifested in extra bytes - while most of our network
+traffic is content, some part of it is just protocol information
+enabling the delivery of that content.
+But the overhead is also manifested in time - establishing a connection
+or passing along critical information from client to server or vice
+versa can take multiple Round-Trip-Times (or RTTs), resulting in those
+parts of the delivery being highly influenced by the network's latency.
+
+The result of that is a delay until the point where the browser
+starts receiving the response from the server (also known as
+Time-To-First-Byte or TTFB). Recent
+advances in the underlying protocols make that less of an issue, and
+can reduce TTFB significantly.
 
 ### 0-RTT
-Traditionally, the DNS, TCP and TLS protocol required a large number of
-round trip times (or RTTs) in order for the server to be able to start
-delivering useful data to the user.
+In their non-cutting-edge version, the DNS, TCP and TLS protocols require a large number of
+RTTs in order for the server to be able to start delivering useful data to the user.
 
 ![](media/dnstcptls.svg)
 
@@ -75,12 +82,17 @@ Protocol advancements such as QUIC on the one hand and TCP-Fast-Open
 rely on previous established connections in order to keep cryptographic
 "cookies" remembering past sessions, and use that to recreate previous
 sessions instantaneously.
-There are still many caveats to that (e.g. very first session, QUIC
-negotiation, TFO+TLS1.3), but generally, we are working towards enabling
-very few RTTs to get in the way of data delivered to our users.
+There are still many caveats and many scenarios where the connection
+will take more than a single RTT to be established, but generally, using those cutting edge protocols
+will mean that there are very few RTTs which get in the way of content delivered to our users.
 
 ### Preconnect
-Preconnect is another way to get rid of these pesky RTT - just get them
+Preconnect is browser hint which tells it the page is about to download
+a resource from a certain host, enabling it to connect to it ahead of time.
+It is expressed as a `rel` attribute on a `<link>` element. For example:
+`<link rel=preconnect href="https://www.example.com">`
+
+That is another way to get rid of these pesky RTT - just get them
 out of the way sooner, so that they don't get in the way of your site's
 critical rendering path.
 
@@ -178,6 +190,8 @@ connections to other hosts from taking place. So only preconnect to
 hosts your browser would need to preconnect to, and prefer to do that
 roughly in the same order as the browser would use those connections.
 
+<!-- TODO: do I need to add a comment about preconnect and crossorigin?  -->
+
 And as far as adaptive congestion window goes, that requires some more
 server-side smarts, but hopefully with the advent of network info in
 Client-Hints and QUIC, one can imagine servers implementing that scheme.
@@ -266,9 +280,17 @@ resources in its cache.
 Furthermore, sending of those critical resources start the TCP
 slow-start process earlier and ramps up TCP's congestion window. When
 the HTML is finally ready, a significantly larger part of it can be sent down.
-
+<figure>
 ![](media/page_loading_nopush.svg)
+<figcaption>Loading process without push - HTML download and slow start
+kick off only after HTML is generated.</figcaption>
+</figure>
+<figure>
 ![](media/page_loading_push.svg)
+<figcaption>Loading process with push - critical resources and slow start
+kick off before HTML is generated, so once it is ready, it can be sent
+down in a single RTT.</figcaption>
+</figure>
 
 One of the biggest problems with Server Push today is that the server
 has no visibility into the browser's cache state, so when done naively,
@@ -391,23 +413,30 @@ HTML processing phase starts by the tokenization phase -
 The browser breaks apart the HTML string into tokens, where each token
 represents a tag start, tag end, or the text between the tags.
 
-The tokens don't necessarily comply to HTML's processing rules and
-haven't yet undergone any HTML specific processing. They are just data
+The tokens are just data
 structure representation of the HTML's text, bringing it one step closer
 to something that can be properly handled by the HTML parser.
+They may represent invalid HTML, as the example below. That is expected, as
+it's not the tokenizer's role to enforce HTML parsing rules.
 
+<figure>
 ![](media/tokenization.svg)
+<figcaption>Invalid HTML gets tokenized - the `</img>` tag creates an
+"EndTag" token, despite it being invalid.</figcaption>
+</figure>
 
 After the tokenization phase, the browser can start using those tokens
 in order to kick off resource loads. Since blocking scripts can cause
-the DOM creation, it's better not to wait for that until the DOM is
-done.
+the DOM creation, it's better not to wait to load resources until the DOM is
+ready.
 Instead, the browser is using its [preloader][preloader] in order to
 scan through the tokens and figure out resources that are highly likely to be requested later on, and kick off those requests ahead of time.
 
-After that, it uses those same tokens to parse
-them according to HTML's parsing rules. The result of that parsing is
+After the preloader ran its course, the browser uses those same tokens and parses
+them according to HTML's parsing rules.  The result is
 DOM nodes, interconnected into a DOM tree.
+Any tokens which represent
+invalid markup will be processed and used to create perfectly valid DOM.
 
 [preloader]: https://calendar.perfplanet.com/2013/big-bad-preloader/
 
@@ -420,7 +449,7 @@ content.
 We talked about the creation of the DOM tree, and it is in fact
 required in order for the browser to be able to render the page to
 screen, but unfortunately it is not sufficient. In order to be able to
-properly initially render the page with its appropriate styling to the
+initially render the page with its appropriate styling to the
 user (and avoiding a "Flash of unstyled content"), the browser also
 needs to create the Render Tree and in most cases the CSSOM.
 
@@ -500,7 +529,7 @@ HTML, CSS, fonts, JS, in-viewport images, out-of-viewport images.
 Chrome also follows some further heuristics which go beyond what other
 browsers typically do:
 
-* Blocking scripts which are loaded after an image request was sent out
+* Blocking scripts at the bottom of the page
   are of lower priority than blocking scripts at the top of the
 page.
 * Async and defer scripts are of even lower priority
@@ -603,6 +632,14 @@ Loading only the critical bits of your CSS upfront, while lazy loading
 the later-needed bits can be one of the most impactful optimizations
 your can apply to speed up your first paint and first meaningful paint
 rendering metrics.
+
+Your CSS can probably be divided into three parts:
+
+* Critical CSS - CSS required to style elements which are present in
+  the initial viewport.
+* Non-critical CSS - CSS required to style elements outside of the
+  initial viewport or in other parts of your site.
+* Unused CSS - CSS rules which are not used anywhere on your site.
 
 With the advent of front-end CSS frameworks, such as Bootstrap, many
 sites are downloading significantly more CSS than they actually use.
@@ -738,9 +775,7 @@ changed.
 
 But good news - starting from Chrome 69,
 Chrome aligned its behavior. This means that developers can now include
-non-critical CSS (e.g. CSS which impact parts of the page which are not
-critical for the user's experience - either because they are not
-important or because they are outside of the initial viewport), using
+non-critical CSS, using
 `<link rel=stylesheet>` tags inside their content, without it having a
 negative impact.
 
@@ -1275,6 +1310,7 @@ We talked earlier about properly splitting and prioritizing critical and
 non-critical content, but turns our that on the web there a third class
 of content: unneeded content.
 
+## Don't download unused content
 Due to the use of CSS frameworks, large JS libraries, as well as simple code churn, content on the web tends of contain a large percentage of unused code.
 There are many tools today that can help you spot out such unused code
 as part of your build process and weed it out.
@@ -1309,7 +1345,40 @@ once you realize you have lots of it on your site. Finding out when each
 piece of code comes from and where it might be used can be a tiresome
 manual process. So avoid getting yourself into such scenarios by having
 proper coverage checks as part of your continuous integration and
-deployment process.
+deployment process. That helps to make sure that whenever you
+incorporate a new library for that shiny new feature, you won't incorporate unneeded bloat along with it.
+
+### But that unused content is cached, so that's perfectly fine, right?
+
+Well, not really. First of all, that content will not be cached for
+first visit users. Depending on your audience, that could be a large
+chunk of your users, and as they say, you only get one opportunity to
+make a first impression. That content will also not be cached whenever
+you update it, which is you should do fairly regularly, to avoid any
+[known security vulnerabilities][vulnerabilities] in popular libraries.
+
+[vulnerabilities]: https://snyk.io/blog/77-percent-of-sites-still-vulnerable/
+
+On top of that, caches get evicted. Especially on mobile devices (where it
+matters most), unless your site is the most popular one that user
+visits, your precious resources may have made room for others. Having
+overly bloated resources (which take up more cache space) actually
+increases the chances of that happening. And even if the resource is in
+the cache, larger resources are more likely to be stored over multiple
+blocks, which on spinning-disk based caches may mean longer retrieval
+times.
+
+For Javascript, extra code also means extra parsing costs. That may be
+offset by Javascript's optimized code caching, but those may get evicted
+before your content does.
+
+<!-- TODO: Make sure that's actually true -->
+
+Finally, unused CSS and JS code increases your site's memory footprint
+for no good reason, as the browser has to maintain the unused rules and
+code in memory for as long as your site is in memory. In low-memory
+environments (e.g. mobile) that could mean the difference between your
+site's tab getting kicked out of memory when the user is not looking.
 
 ## Compression API
 As mentioned above, in many cases the unused content on our sites is
@@ -2041,7 +2110,12 @@ Loading resources on the web today is hard. At the very least, it's hard
 to do in an optimal way. But, it's getting better. And browsers are
 heavily investing in improving it significantly.
 
-So to wrap up the
+## What to do?
+
+TODO: Sum up a list of all actions devs need to take from throughout the book
+
+## What's in the future?
+To wrap up the
 chapter with an optimistic view, here's where I want loading resources
 will be 5 years from now:
 
@@ -2079,6 +2153,8 @@ reduce the amount of framework JS and CSS users have to download.
   implementations of adaptive congestion control algorithms. QUIC can
 make it simpler to change the congestion window after receiving the
 request.
+* WebPackaging and packaged content will enable browsers to prefetch it as if it's coming
+  from the origin without privacy implications and side effects.
 
 These are all things that are currently being discussed and are in
 different phases of the standardization process. Some may not make it,
@@ -2089,3 +2165,4 @@ In aggregate, all these improvements would mean that loading resources in a perf
 become easy to do, and the default way of creating content for the web.
 I believe that can make your lives as developers easier, and more
 importantly improve our user's default experience of the web.
+
