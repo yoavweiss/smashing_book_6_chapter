@@ -2079,7 +2079,6 @@ reduce the amount of framework JS and CSS users have to download.
   implementations of adaptive congestion control algorithms. QUIC can
 make it simpler to change the congestion window after receiving the
 request.
-* ???
 
 These are all things that are currently being discussed and are in
 different phases of the standardization process. Some may not make it,
