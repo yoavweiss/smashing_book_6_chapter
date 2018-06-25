@@ -2117,7 +2117,7 @@ TODO: Sum up a list of all actions devs need to take from throughout the book
 ## What's in the future?
 To wrap up the
 chapter with an optimistic view, here's where I want loading resources
-will be 5 years from now:
+to be 5 years from now:
 
 * The QUIC protocol will be standardized and universally deployed. It
   will resolve many of the underlying protocol issues
@@ -2136,31 +2136,40 @@ sites to easily coalesce their different domains onto the same connection for
 improved prioritization.
 * The third party ecosystem will be significantly more amenable to being
   iframed for increased performance and security.
+* The framework ecosystem will make heavy use of workers, delegating
+  more JS work off-main-thread.
 * Feature policy combined with iframes third parties will enable
   developers to take back control over their user's experience.
 * Lazy loading non-critical content will become significantly easier
   through new loading paradigms.
 * Early delivery and resource discovery will be fixed using Server Push
   (with Cache Digests), Preload and priority hints. Build tools will
-will automatically create those instructions for developers at build time.
+ automatically create those instructions for developers at build time.
 * Javascript resources will be bundled using WebPackages, enabling
   improved compression, caching granularity, and (combined with Cache
 Digests) avoiding to send down resources already in the browser's cache.
+* Common build processes will also help make sure completely unused JS
+  and CSS is never sent down to the browser, and rarely/late used code
+is loaded later on.
 * The combination of compression APIs and Service Workers will enable
   off-the-shelf delta compression solutions that will significantly
 reduce the amount of framework JS and CSS users have to download.
-* Client Hints with network quality estimations can simplify server side
-  implementations of adaptive congestion control algorithms. QUIC can
+* Client Hints with network quality estimations will simplify server side
+  implementations of adaptive congestion control algorithms. QUIC wlll
 make it simpler to change the congestion window after receiving the
-request.
-* WebPackaging and packaged content will enable browsers to prefetch it as if it's coming
+request with those hints.
+* WebPackaging and packaged content will enable browsers to prefetch content as if it's coming
   from the origin without privacy implications and side effects.
+* And finally, measurement APIs will enable us to keep track of all the
+  above and make sure our user's experiences are as snappy as we want
+them to be.
 
 These are all things that are currently being discussed and are in
 different phases of the standardization process. Some may not make it,
 and be replaced with more mature incarnations. But the aim is to solve
 all those problems and make the solutions for them a reality in the next
 few years.
+
 In aggregate, all these improvements would mean that loading resources in a performant way on the web would
 become easy to do, and the default way of creating content for the web.
 I believe that can make your lives as developers easier, and more
