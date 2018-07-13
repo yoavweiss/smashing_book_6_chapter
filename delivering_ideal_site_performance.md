@@ -38,22 +38,17 @@ does not get in the way of your user's experience.
 * Measurement - Making sure that all the above conditions are in fact true
 and perform as expected.
 
-This chapter will explore ways to make sure these conditions are
-maintained when loading and executing content on the web. These
-conditions most probably require changes in the way browsers load web
-content. However, they cannot rely solely on that. In order for some of
-these conditions to be met, web content must also be changed.
+This chapter will explore a strategy of how to make the best of these conditions and avoid any kind of delays or underutilization when delivering assets on the web. These
+conditions most probably require changes in the way browsers load your content. However, they cannot rely solely on that. In order for some of
+these conditions to be met, web content must also be adjusted.
 
-At the same time, we will not cover all the above conditions. Specifically, the chapter
-will focus on resource loading and will leave CPU utilization, main-thread blocking
-avoidance and performance measurement to be covered elsewhere.
+At the same time, due to limitations in size we won’t be able to cover all of the above conditions and all the fine intricacies of all those particular cases. Specifically, the chapter will focus on all the ins and outs of resource loading and will leave CPU utilization, main-thread blocking avoidance and performance measurement aside.
 
 # Early Delivery
-“Early Delivery” means that useful-relevant content starts to be sent
-down to the browser shortly after the user performed some action that
-indicates that they are interested on that content, for example clicked
-on a link or typed something in their URL bar. (or even before that, if
-the application can have high enough confidence that they would)
+When it comes to web performance, our goal is usually seemingly obvious: we want _meaningful_ content to be accessible as fast as possible. As a part of it, usually we want the content to be delivered early. How early is early enough? Probably when relevant content starts to be sent
+down to the browser right away after the user performed some action that
+indicates that they are interested in that content. It could manifest itself in a click on a link or in typing something in the URL bar. (or even before that, if
+the application can have high enough confidence that they would — e.g. when a mouse pointer is located within a certain proximity of a button, e.g. 150px around it.).
 
 ## Protocol overhead
 Network protocols introduce overhead to network communication. That
