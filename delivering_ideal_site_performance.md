@@ -38,22 +38,17 @@ does not get in the way of your user's experience.
 * Measurement - Making sure that all the above conditions are in fact true
 and perform as expected.
 
-This chapter will explore ways to make sure these conditions are
-maintained when loading and executing content on the web. These
-conditions most probably require changes in the way browsers load web
-content. However, they cannot rely solely on that. In order for some of
-these conditions to be met, web content must also be changed.
+This chapter will explore a strategy of how to make the best of these conditions and avoid any kind of delays or underutilization when delivering assets on the web. These
+conditions most probably require changes in the way browsers load your content. However, they cannot rely solely on that. In order for some of
+these conditions to be met, web content must also be adjusted.
 
-At the same time, we will not cover all the above conditions. Specifically, the chapter
-will focus on resource loading and will leave CPU utilization, main-thread blocking
-avoidance and performance measurement to be covered elsewhere.
+At the same time, due to limitations in size we won’t be able to cover all of the above conditions and all the fine intricacies of all those particular cases. Specifically, the chapter will focus on all the ins and outs of resource loading and will leave CPU utilization, main-thread blocking avoidance and performance measurement aside.
 
 # Early Delivery
-“Early Delivery” means that useful-relevant content starts to be sent
-down to the browser shortly after the user performed some action that
-indicates that they are interested on that content, for example clicked
-on a link or typed something in their URL bar. (or even before that, if
-the application can have high enough confidence that they would)
+When it comes to web performance, our goal is usually seemingly obvious: we want _meaningful_ content to be accessible as fast as possible. As a part of it, usually we want the content to be delivered early. How early is early enough? Probably when relevant content starts to be sent
+down to the browser right away after the user performed some action that
+indicates that they are interested in that content. It could manifest itself in a click on a link or in typing something in the URL bar. (or even before that, if
+the application can have high enough confidence that they would — e.g. when a mouse pointer is located within a certain proximity of a button, e.g. 150px around it.).
 
 ## Protocol overhead
 Network protocols introduce overhead to network communication. That
@@ -86,6 +81,12 @@ There are still many caveats and many scenarios where the connection
 will take more than a single RTT to be established, but generally, using those cutting edge protocols
 will mean that there are very few RTTs which get in the way of content delivered to our users.
 
+<!-- (vf)
+
+- " using those cutting edge protocols will mean that there are very few RTTs which get in the way of content delivered to our users.” — so what does it mean for developers? We can’t rely on QUIC because it’s not implemented anywhere right? Would be great to provide some strategic guidance for developers so they know what they should be expecting.
+
+-->
+
 ### Preconnect
 Preconnect is browser hint which tells it the page is about to download
 a resource from a certain host, enabling it to connect to it ahead of time.
@@ -96,12 +97,19 @@ That is another way to get rid of these pesky RTT - just get them
 out of the way sooner, so that they don't get in the way of your site's
 critical rendering path.
 
+<!-- (vf)
+
+- “Preconnect” section feels a bit lost between 0-RTT and “Adaptive congestion window”. Again, it would be great to explain how it’s connected to 0-RTT. Also, what about dns-prefetch?
+
+-->
+
+
 ### Adaptive congestion window
-Another form of protocol overhead is Slow Start.
 When the server starts sending data to the user, it doesn't know how much bandwidth it will have for that purpose. It can't be sure what
 amount of data will overwhelm the network and cause congestion. Since
-the implications of congestions can be severe , the slow start mechanism was developed in order to make sure it does not happen.
-TCP slow start is a mechanism that enables the server to gradually discover the connection's limits, by starting to send a small amount of packets, and increasing that exponentially.
+the implications of congestions can be severe, the so-called _Slow Start_ mechanism was developed. Basically it's another form of protocol overhead but it makes sure congestion doesn't happen.
+
+_TCP slow start_ enables the server to gradually discover the connection's limits, by starting to send a small amount of packets, and increasing that exponentially.
 But due to its nature, slow start also limits us in the amount of data that we can initially send on a new connection.
 
 <aside>
@@ -145,6 +153,13 @@ If you're familiar with the "send all your critical content in the first
 the maximum Ethernet packet size is 1460 bytes of payload, 10 packets
 (or ~14KB) can be delivered during that first initial congestion window.
 
+<!-- (vf)
+
+- "14KB of your HTML” — it might be a good idea to explain what it means (just so people can relate to it, maybe in the footer or aside?)
+
+-->
+
+
 However, in many cases the network over which we're connecting can
 handle significantly more than that, and theoretically the server could
 have known that in some cases (since they've seen this browser over that
@@ -162,11 +177,24 @@ Connection Type][ect] and adapt it according to the browser's estimate.
 That would help to significantly minimize the time it takes the
 connection to converge onto its final congestion window value.
 
+<!-- (vf)
+
+- "Browsers already expose network information to Javascript,” — oh, details please? Network Information API? Link to it/explain it!
+
+-->
+
 The advent of QUIC as the transport protocol will also make this easier
 to implement on the server, as there's no easy way to increase the
 congestion window for an in-flight connection in TCP implementations today.
 
 [ect]: https://wicg.github.io/netinfo/#-dfn-effectiveconnectiontype-dfn-enum
+
+
+<!-- (vf)
+
+- QUIC section. A few sections touch on QUIC. So I’d suggest to add a separate section covering QUIC and explaining what it does and how it works and when we should be expecting its implementations in browsers?
+
+-->
 
 ### What to do?
 
@@ -190,11 +218,31 @@ connections to other hosts from taking place. So only preconnect to
 hosts your browser would need to preconnect to, and prefer to do that
 roughly in the same order as the browser would use those connections.
 
+<!-- (vf)
+
+- "Some browsers
+have a limited number of DNS requests “ — I need to see the proof! :-) Can you be more specific here? What are the limitations? What browsers?
+
+-->
+
 <!-- TODO: do I need to add a comment about preconnect and crossorigin?  -->
+
+<!-- (vf)
+
+- OH YES, PLEASE!
+
+-->
 
 And as far as adaptive congestion window goes, that requires some more
 server-side smarts, but hopefully with the advent of network info in
 Client-Hints and QUIC, one can imagine servers implementing that scheme.
+
+<!-- (vf)
+
+I would probably extract all te details about client hints and QUIC in separate sections. I think some people need guidance and explanation what they are and why they matter.
+
+-->
+
 
 ## Server-side processing
 The other hurdle to overcome when it comes to early delivery is server
@@ -230,6 +278,13 @@ support javascript, it can mean that such "eventual error" pages can now
 find themselves in search results. It also means we need to bake that "eventual error" logic into our
 client side application logic, in order to make sure the negative user impact of
 that redirection is as unnoticeable as it can be.
+
+<!-- (vf)
+
+- Are you sure that not all crawlers support JS? I think it's a myth these days?
+- https://www.youtube.com/watch?v=cznVISavm-k, starting from 12:34 so can we use it for early flushing?
+
+-->
 
 #### Dynamic response header logic
 Any dynamic logic applied to the response headers must be applied
@@ -271,7 +326,7 @@ the default.
 
 ### Server Push
 Another way to work around slow server-side processing is the use an
-HTTP/2 mechanism called Server Push in order to load critical resources
+HTTP/2 mechanism called _Server Push_ in order to load critical resources
 while the HTML is being generated.
 
 That often means that by the time the HTML was generated and started to
@@ -578,7 +633,7 @@ enabling setting the hint on dynamically generated requests.
 ## Stream internal priorities
 
 One of the assumptions behind HTTP/2's prioritization scheme is that
-every resource has its priority. And that assumption works well for
+every resource has a priority. And that assumption works well for
 resources which have to be processed as a whole such as CSS and
 Javascript. These resources are either critical or not, in their
 entirety.
@@ -588,7 +643,7 @@ assumption doesn't necessarily hold.
 
 If we consider HTML, its first few bytes which contain the `<head>`,
 enable the document to be committed and the critical resources to be
-requested is of the highest priority. At the same time, especially for
+requested are of the highest priority. At the same time, especially for
 long HTML files which go beyond the initial viewport, the last few bytes
 which are required to finish constructing the DOM, but are not required
 for the initial rendering, are of lower priority.
@@ -679,11 +734,24 @@ extra RTT plus some processing time before that download starts.
 
 Another option is to inline that critical CSS into your HTML so that it
 will get delivered as part of the same resource, saving us an RTT.
+
+<!-- (VF)
+
+- inline that Critical CSS, one for each distinct template you are using, into your HTML...
+
+-->
+
 That's a better option, especially if your critical CSS is fairly small.
 At the same time, your caching will suffer. Delivering the CSS inline
 means that you'll be sending it down again and again for every repeat
 visit on every page to your site. If the CSS is small enough it could be
 worth your while, but it's a trade-off you should be aware of.
+
+<!-- (VF)
+
+- Well, you could set a cookie to decide to fetch the critical or not? What about having a small critical on every page, e.g. critical-homepage.css, critical-category.css and load it via prefetch? Finally, what about repeat visits? Would you recommend storing CSS in Service Worker cache, or HTTP cache, or somewhere else? :) We probably also need to touch on first view vs. repeat view discussion here.
+
+-->
 
 A third option is to use H2 push in order to deliver the CSS before your
 HTML even hits the browser. We'll dive into H2 push further at a later
@@ -787,11 +855,22 @@ partial blocker.
 
 <!-- Should I rewrite this as if it already happened?? -->
 
+<!-- (vf)
+
+- Yes, I think so!
+
+-->
 
 ## JS - critical and non-critical
 Similarly to CSS, blocking Javascript also holds off rendering. Unlike
 CSS, Javascript [processing][cost_js] is significantly more expensive than CSS
 and its render-blocking execution can be arbitrarily long.
+ 
+<!-- (vf) 
+
+- having links without context is difficult in a printed book. Can you explain the link [cost_js] as it will go in the footnote. Goes for other links as well, of course.
+
+-->
 
 On top of that, non-blocking async Javascript can also block rendering
 in some cases, which we'll discuss further down.
@@ -1102,6 +1181,19 @@ fast, and then use them to "bootstrap" the rest of your app.
 
 <!-- TODO: pass that through someone that knows these things better -->
 
+<!-- (vf)
+
+- Cough cough. :-D
+
+-->
+
+<!-- (VF)
+
+- So can you be more specific of what you'd recommend to people using Angular or React? Not to use these frameworks? Maybe instead we could have a little section explaining what they need to keep in mind when optimizing delivery?
+
+-->
+
+
 ## Image lazy loading
 Images often comprise a large chunk of the page's downloaded bytes. At
 the same time, many of the images on the web are downloaded, decoded and
@@ -1304,6 +1396,12 @@ we talk about contention.
 [preload_medium_delay]: https://chromium-review.googlesource.com/c/chromium/src/+/720798
 
 <!-- TODO: do we need to add example waterfalls here? -->
+
+<!-- (vf)
+
+- Yes, it'd be helpful.
+
+-->
 
 # Minimal content
 We talked earlier about properly splitting and prioritizing critical and
@@ -1518,6 +1616,12 @@ as well as an [entire book][high_perf_images] dedicated just for image optimizat
 
 But I'll do my best to give a brief summary.
 
+<!-- (vf) 
+
+- I don't think we need it here in such detail to be honest. Our readers will know RWD Images fairly well. Instead, I'd focus a bit more on strategies for SPAs / React/ Angular / HTTP2 / Service Workers if possible ;-) Although webp would be worth mentioning!
+
+-->
+
 ### Responsive Images
 The responsive images solutions goal is to enable developers to serve
 appropriately dimensioned images to their users, no matter their device
@@ -1650,6 +1754,12 @@ In cases where you can make assumptions about the content at build time,
 there are tools (e.g. [subfont][subfont]) which can help you subset your
 fonts to the minimal subset you need.
 [subfont]: https://www.npmjs.com/package/subfont
+
+<!-- (vf)
+
+- Wouldn't it be better to have a section on HTTP/2 + QUIC over here, to clearly separate things?
+
+-->
 
 # Contention avoidance
 We talked earlier about resource priorities and the way that browsers
