@@ -1287,11 +1287,13 @@ Since Edge’s default font loading strategy is not very different from
 “swap”, the lack of support is probably not something you have to worry
 about too much.
 
-One major caveat with CSS font-display is that different fonts may
+One major [caveat][font_reflow] with CSS font-display is that different fonts may
 trigger the swap at different times, so if you have multiple font files
 that represent different styles or weights, they may come in at
 different times, resulting in a potentially jarring experience to your
 users.
+
+[font_reflow]: https://www.zachleat.com/web/font-display-reflow/
 
 If this is your case, you may prefer to use…
 ### The Font Loading API
