@@ -17,7 +17,7 @@ browser side as well as on the server/content side.</p>
 happen:</p>
 
 <ul>
-<li>Early delivery - Content delivery needs to happen as soon as possible.</li>
+<li>Early delivery - Content delivery needs to start as soon as possible.</li>
 <li>Priorities - Critical content is delivered before less-critical one.</li>
 <li>Full bandwidth pipe - The network bandwidth must be 100% used at all
 times until no content delivery is required.</li>
@@ -42,7 +42,7 @@ and perform as expected.</li>
 
 <p>This chapter will explore ways to make sure these conditions are
 maintained when loading and executing content on the web. These
-conditions most probably require changes in the way browsers load web
+conditions may require changes in the way browsers load web
 content. However, they cannot rely solely on that. In order for some of
 these conditions to be met, web content must also be changed.</p>
 
@@ -50,13 +50,142 @@ these conditions to be met, web content must also be changed.</p>
 will focus on resource loading and will leave CPU utilization, main-thread blocking
 avoidance and performance measurement to be covered elsewhere.</p>
 
+<p>But before we dive into the details of the difference resource loading
+phases and how they can be improved, let’s take a short detour to
+examine the browser’s resource loading process.</p>
+
+<h2>How browsers load resources</h2>
+
+<p>A typical web page is built from multiple resource types and often many resources
+that make sure the user's visual experience is a pleasant one.</p>
+
+<p>The HTML resource is there to give the browser the structure of the
+document, CSS is there to style the document and JavaScript gives it
+functionality and interactivity. Beyond those, fonts make sure the
+reading experience is optimal, and image, video and audio resources
+provide the user with visuals as well an audio often required to get the
+full context of the page.</p>
+
+<p>But all these resources are not declared in a single place when the
+browser initially fetches the HTML, when the user clicks on a link or
+types something into their URL bar. All the browser has to go on at that
+point in the HTML itself, and only once it fetched it does it know of
+some of those other resources required for the full site's experience.</p>
+
+<p>So what does happen when the browser navigates to a new page?</p>
+
+<p>First, the browser starts the connection establishment process we
+discussed earlier, with DNS, TCP and TLS (which often costs us around 4
+RTTs). Then, it sends out a GET request for the HTML itself, and
+receives an initial buffer of the response from the server.
+The size of that response depends both on the HTML size and the initial
+congestion window of the server. A typical value for that is window is
+10 packets of 1460 bytes, or around 14KB of data.</p>
+
+<h3>HTML processing</h3>
+
+<p>One of the great things about HTML as a format is that it's a
+progressive one. It can be processed as it comes off the network, so
+even if the HTML the browser has is incomplete (as is often the case),
+the parts that already arrived can be processed and acted upon.</p>
+
+<p>Now, the browser needs to process that HTML in order to start building the DOM tree from it, and most importantly for our resource-loading interests, to figure out which
+resources are needed for it to fully construct and render the page. The
+HTML processing phase starts by the tokenization phase - 
+The browser breaks apart the HTML string into tokens, where each token
+represents a tag start, tag end, or the text between the tags.</p>
+
+<p>The tokens are just data
+structure representation of the HTML's text, bringing it one step closer
+to something that can be properly handled by the HTML parser.
+They may represent invalid HTML, as the example below. That is expected, as
+it's not the tokenizer's role to enforce HTML parsing rules.</p>
+
+<p><figure>
+<img src="media/tokenization.svg" alt="" title="" />
+<figcaption>Invalid HTML gets tokenized - the <code>&lt;/img&gt;</code> tag creates an
+"EndTag" token, despite it being invalid.</figcaption>
+</figure></p>
+
+<p>After the tokenization phase, the browser can start using those tokens
+in order to kick off resource loads. Since blocking scripts can cause
+the DOM creation, it's better not to wait to load resources until the DOM is
+ready.
+Instead, the browser is using its <a href="https://calendar.perfplanet.com/2013/big-bad-preloader/">preloader</a> in order to
+scan through the tokens and figure out resources that are highly likely to be requested later on, and kick off those requests ahead of time.</p>
+
+<p>After the preloader ran its course, the browser uses those same tokens and parses
+them according to HTML's parsing rules.  The result is
+DOM nodes, interconnected into a DOM tree.
+Any tokens which represent
+invalid markup will be processed and used to create perfectly valid DOM.</p>
+
+<h3>The critical rendering path</h3>
+
+<p>We've seen above how the browser discovers resources, but not all
+resources are created equal. In particular there's a set of resources
+that the browser requires in order to initially render the web page's
+content.</p>
+
+<p>We talked about the creation of the DOM tree, and it is in fact
+required in order for the browser to be able to render the page to
+screen, but unfortunately it is not sufficient. In order to be able to
+initially render the page with its appropriate styling to the
+user (and avoiding a "Flash of unstyled content"), the browser also
+needs to create the Render Tree and in most cases the CSSOM.</p>
+
+<p><aside>
+The CSS Object Model (CSSOM) is a set of APIs that
+enable scripts to examine the styles of various DOM nodes, as well as
+setting them to change their appearance.
+</aside></p>
+
+<p>In order to create both the CSSOM and the render tree, the browser needs
+to download all the external CSS resources and evaluate them. Then it
+processes those downloaded rules, along with
+any inline style tags and style attributes in order to calculate which
+styles (if any) are applied to each node in the DOM tree.</p>
+
+<p>This is also where blocking scripts come in. Blocking scripts (as their
+can suggest) block the HTML parsing as soon as they are discovered and
+HTML parsing does not continue until they finish being downloaded,
+parsed and executed. One more detail about them is that, at least in
+many cases, they cannot
+start executing until all CSS that preceded them finished being
+downloaded and processed.</p>
+
+<p>The reason for that is that those scripts can access the bits of the DOM
+that are already generated and query their CSSOM. If they do that, the
+CSSOM state must be stable and complete. Hence browsers must make sure
+that this is the case, and they do that by downloading and processing
+all CSS before any CSSOM reads. The result of that can be a lot of delay
+to the JS execution, which in turn delays the DOM creation. Sadness.</p>
+
+<p>To top all that, the above is applicable to both external blocking
+scripts as well as inline ones. So inline scripts can and will block
+your HTML processing if they are preceded by external stylesheets.</p>
+
+<p>Now, once the browser have built a sufficiently large DOM tree and calculated the styles for each DOM node, it can
+walk over the DOM and create the render tree, by creating an equivalent
+tree for each node that actually partake in the page's rendering and is
+displayed on screen.</p>
+
+<p>After that, the browser can proceed to laying out the different elements
+on the screen and eventually paint them.</p>
+
+<p><img src="media/critical_path.jpg" alt="" title="" /></p>
+
+<p>Now with a better understanding of the way browsers load resources,
+let’s take a look at the different conditions required to make that
+loading as fast as possible.</p>
+
 <h1>Early Delivery</h1>
 
-<p>“Early Delivery” means that useful-relevant content starts to be sent
-down to the browser shortly after the user performed some action that
-indicates that they are interested on that content, for example clicked
-on a link or typed something in their URL bar. (or even before that, if
-the application can have high enough confidence that they would)</p>
+<p>“Early Delivery” means that useful and relevant content starts to be sent
+down to the browser shortly after the browser sent out a request for
+it, typically after the user clicked on a link or typed something in
+their URL bar. (or even before that, if the application can have high
+enough confidence that they would)</p>
 
 <h2>Protocol overhead</h2>
 
@@ -78,15 +207,15 @@ can reduce TTFB significantly.</p>
 <h3>0-RTT</h3>
 
 <p>In their non-cutting-edge version, the DNS, TCP and TLS protocols require a large number of
-RTTs in order for the server to be able to start delivering useful data to the user.</p>
+RTTs before the server is able to start delivering useful data to the user.</p>
 
 <p><img src="media/dnstcptls.svg" alt="" title="" /></p>
 
 <p>Protocol advancements such as QUIC on the one hand and TCP-Fast-Open
 (TFO) and TLS1.3 on the other hand, made most of that obsolete. These protocols
 rely on previous established connections in order to keep cryptographic
-"cookies" remembering past sessions, and use that to recreate previous
-sessions instantaneously.
+"cookies" that remember past sessions, and allow previous sessions to be
+recreated instantaneously.
 There are still many caveats and many scenarios where the connection
 will take more than a single RTT to be established, but generally, using those cutting edge protocols
 will mean that there are very few RTTs which get in the way of content delivered to our users.</p>
@@ -107,7 +236,7 @@ critical rendering path.</p>
 <p>Another form of protocol overhead is Slow Start.
 When the server starts sending data to the user, it doesn't know how much bandwidth it will have for that purpose. It can't be sure what
 amount of data will overwhelm the network and cause congestion. Since
-the implications of congestions can be severe , the slow start mechanism was developed in order to make sure it does not happen.
+the implications of congestion can be severe, the slow start mechanism was developed in order to make sure it does not happen.
 TCP slow start is a mechanism that enables the server to gradually discover the connection's limits, by starting to send a small amount of packets, and increasing that exponentially.
 But due to its nature, slow start also limits us in the amount of data that we can initially send on a new connection.</p>
 
@@ -141,14 +270,17 @@ window - the initial amount of packets the server can send on a fresh
 connection - was <a href="https://tools.ietf.org/html/rfc3390">somewhere between 2 and 4, depending on their
 size</a>.</p>
 
-<p>In 2013 a group of researchers at Google have ran experiments all over
+<p>In 2013 a group of researchers at Google ran experiments all over
 the world with different congestion windows and <a href="https://tools.ietf.org/html/rfc6928">reached the
 conclusion</a> that this value can be lifted to 10.</p>
 
 <p>If you're familiar with the "send all your critical content in the first
 14KB of your HTML" rule, that's where this rule is coming from. Since
 the maximum Ethernet packet size is 1460 bytes of payload, 10 packets
-(or ~14KB) can be delivered during that first initial congestion window.</p>
+(or ~14KB) can be delivered during that first initial congestion window.
+Those packets need to include both the headers and the critical content
+payload if you want your site to reach first paint without requiring
+extra round-trips.</p>
 
 <p>However, in many cases the network over which we're connecting can
 handle significantly more than that, and theoretically the server could
@@ -160,7 +292,7 @@ regarding the quality of the network it's on. It can do that based on
 the network radio type, signal strength, as well as past browsing
 sessions on that network.</p>
 
-<p>Browsers already expose network information to Javascript, and there's work underway
+<p>Browsers already expose network information to JavaScript, and there's work underway
 to expose the same information using Client-Hints. That will enable
 servers to modify their initial congestion window based on the <a href="https://wicg.github.io/netinfo/#-dfn-effectiveconnectiontype-dfn-enum">Effective
 Connection Type</a> and adapt it according to the browser's estimate.
@@ -276,7 +408,7 @@ the default.</p>
 <h3>Server Push</h3>
 
 <p>Another way to work around slow server-side processing is the use an
-HTTP/2 mechanism called Server Push in order to load critical resources
+HTTP/2 (or H2, for short) mechanism called Server Push in order to load critical resources
 while the HTML is being generated.</p>
 
 <p>That often means that by the time the HTML was generated and started to
@@ -373,128 +505,9 @@ browser will be one step ahead of them.</p>
 
 <p>Since the download process of a web page is comprised of downloading
 dozens (and sometimes more) resources, properly managing the download priority of these
-resources if of utmost importance.</p>
-
-<h2>How browsers load resources</h2>
-
-<p>A typical web page is built from multiple resource types and often many resources
-that make sure the user's visual experience is a pleasant one.</p>
-
-<p>The HTML resource is there to give the browser the structure of the
-document, CSS is there to style the document and Javascript gives it
-functionality and interactivity. Beyond those, fonts make sure the
-reading experience is optimal, and image, video and audio resources
-provide the user with visuals as well an audio often required to get the
-full context of the page.</p>
-
-<p>But all these resources are not declared in a single place when the
-browser initially fetches the HTML, when the user clicks on a link or
-types something into their URL bar. All the browser has to go on at that
-point in the HTML itself, and only once it fetched it does it know of
-some of those other resources required for the full site's experience.</p>
-
-<p>So what does happen when the browser navigates to a new page?</p>
-
-<p>First, the browser starts the connection establishment process we
-discussed earlier, with DNS, TCP and TLS (which often costs us around 4
-RTTs). Then, it sends out a GET request for the HTML itself, and
-receives an initial buffer of the response from the server.
-The size of that response depends both on the HTML size and the initial
-congestion window of the server. A typical value for that is window is
-10 packets of 1460 bytes, or around 14KB of data.</p>
-
-<h3>HTML processing</h3>
-
-<p>One of the great things about HTML as a format is that it's a
-progressive one. It can be processed as it comes off the network, so
-even if the HTML the browser has is incomplete (as is often the case),
-the parts that already arrived can be processed and acted upon.</p>
-
-<p>Now, the browser needs to process that HTML in order to start building the DOM tree from it, and most importantly for our resource-loading interests, to figure out which
-resources are needed for it to fully construct and render the page. The
-HTML processing phase starts by the tokenization phase - 
-The browser breaks apart the HTML string into tokens, where each token
-represents a tag start, tag end, or the text between the tags.</p>
-
-<p>The tokens are just data
-structure representation of the HTML's text, bringing it one step closer
-to something that can be properly handled by the HTML parser.
-They may represent invalid HTML, as the example below. That is expected, as
-it's not the tokenizer's role to enforce HTML parsing rules.</p>
-
-<p><figure>
-<img src="media/tokenization.svg" alt="" title="" />
-<figcaption>Invalid HTML gets tokenized - the <code>&lt;/img&gt;</code> tag creates an
-"EndTag" token, despite it being invalid.</figcaption>
-</figure></p>
-
-<p>After the tokenization phase, the browser can start using those tokens
-in order to kick off resource loads. Since blocking scripts can cause
-the DOM creation, it's better not to wait to load resources until the DOM is
-ready.
-Instead, the browser is using its <a href="https://calendar.perfplanet.com/2013/big-bad-preloader/">preloader</a> in order to
-scan through the tokens and figure out resources that are highly likely to be requested later on, and kick off those requests ahead of time.</p>
-
-<p>After the preloader ran its course, the browser uses those same tokens and parses
-them according to HTML's parsing rules.  The result is
-DOM nodes, interconnected into a DOM tree.
-Any tokens which represent
-invalid markup will be processed and used to create perfectly valid DOM.</p>
-
-<h3>The critical rendering path</h3>
-
-<p>We've seen above how the browser discovers resources, but not all
-resources are created equal. In particular there's a set of resources
-that the browser requires in order to initially render the web page's
-content.</p>
-
-<p>We talked about the creation of the DOM tree, and it is in fact
-required in order for the browser to be able to render the page to
-screen, but unfortunately it is not sufficient. In order to be able to
-initially render the page with its appropriate styling to the
-user (and avoiding a "Flash of unstyled content"), the browser also
-needs to create the Render Tree and in most cases the CSSOM.</p>
-
-<p><aside>
-The CSS Object Model (CSSOM) is a set of APIs that
-enable scripts to examine the styles of various DOM nodes, as well as
-setting them to change their appearance.
-</aside></p>
-
-<p>In order to create both the CSSOM and the render tree, the browser needs
-to download all the external CSS resources and evaluate them. Then it
-processes those downloaded rules, along with
-any inline style tags and style attributes in order to calculate which
-styles (if any) are applied to each node in the DOM tree.</p>
-
-<p>This is also where blocking scripts come in. Blocking scripts (as their
-can suggest) block the HTML parsing as soon as they are discovered and
-HTML parsing does not continue until they finish being downloaded,
-parsed and executed. One more detail about them is that, at least in
-many cases, they cannot
-start executing until all CSS that preceded them finished being
-downloaded and processed.</p>
-
-<p>The reason for that is that those scripts can access the bits of the DOM
-that are already generated and query their CSSOM. If they do that, the
-CSSOM state must be stable and complete. Hence browsers must make sure
-that this is the case, and they do that by downloading and processing
-all CSS before any CSSOM reads. The result of that can be a lot of delay
-to the JS execution, which in turn delays the DOM creation. Sadness.</p>
-
-<p>To top all that, the above is applicable to both external blocking
-scripts as well as inline ones. So inline scripts can and will block
-your HTML processing if they are preceded by external stylesheets.</p>
-
-<p>Now, once the browser have built a sufficiently large DOM tree and calculated the styles for each DOM node, it can
-walk over the DOM and create the render tree, by creating an equivalent
-tree for each node that actually partake in the page's rendering and is
-displayed on screen.</p>
-
-<p>After that, the browser can proceed to laying out the different elements
-on the screen and eventually paint them.</p>
-
-<p><img src="media/critical_path.jpg" alt="" title="" /></p>
+resources is extremely important. We discussed the resource loading
+process earlier. A part of that process is determining each resource’s
+priority.</p>
 
 <h2>Request priorities</h2>
 
@@ -540,7 +553,7 @@ page.</li>
 fonts, to prevent them contending with render blocking resources.</li>
 </ul>
 
-<p>The purpose of these heuristics is to try to estimate the developer's
+<p>The purpose of these heuristics is to try to infer the developer's
 intent from various existing signals: the location of the resource on
 the page, whether it is a blocking resource, etc.
 However, that approach has its limits, and it's hard for the developer
@@ -583,7 +596,7 @@ enabling setting the hint on dynamically generated requests.</p>
 <p>One of the assumptions behind HTTP/2's prioritization scheme is that
 every resource has its priority. And that assumption works well for
 resources which have to be processed as a whole such as CSS and
-Javascript. These resources are either critical or not, in their
+JavaScript. These resources are either critical or not, in their
 entirety.</p>
 
 <p>However, for streaming resource types, such as HTML and images, that
@@ -653,9 +666,9 @@ sites are downloading significantly more CSS than they actually use.
 More often than not, they are loading it upfront, by simply add <code>&lt;link
 rel=stylesheet&gt;</code> tags into their markup.</p>
 
-<p>When the browser's preloader sees such tags, or when the browser's DOM
-tree gets added with the equivalent elements, this CSS is downloaded and
-is considered critical, getting high priority.</p>
+<p>When the browser's preloader sees such tags, or when the equivalent
+elements get added to the browser's DOM tree, this CSS is downloaded at
+a high priority as it is considered critical.</p>
 
 <p>In terms of processing, since CSS is applied in a cascaded fashion,
 before it can be processed to calculate the page's styles, all the CSS
@@ -693,12 +706,8 @@ means that you'll be sending it down again and again for every repeat
 visit on every page to your site. If the CSS is small enough it could be
 worth your while, but it's a trade-off you should be aware of.</p>
 
-<p>A third option is to use H2 push in order to deliver the CSS before your
-HTML even hits the browser. We'll dive into H2 push further at a later
-chapter, but it can be a great way to deliver your critical assets to
-the browser before they are needed, without letting your caching suffer.
-The main trade-off here is complexity - setting up H2 push to work well
-for you can be complex. But I'm getting ahead of myself.</p>
+<p>A third option is to use H2 push in order to deliver critical CSS before your
+HTML even hits the browser.</p>
 
 <h3>How to deliver non-critical CSS</h3>
 
@@ -708,7 +717,7 @@ your HTML as <code>&lt;link rel=stylesheet&gt;</code> will cause the browser to 
 is blocking and hold off rendering until it's fully downloaded and
 processed. How do we avoid that?</p>
 
-<h4>Using RAF as a first paint proxy</h4>
+<h4>Using <code>requestAnimationFrame</code> as a first paint proxy</h4>
 
 <p>One technique of making sure you don't load any non-critical CSS before the initial page
 renders is to trigger the loading of those CSS only after that render
@@ -753,17 +762,20 @@ download of the preload resource, only after the document was painted in
 order to avoid having it contending on bandwidth with more critical
 resources.</p>
 
+<p>The downside of these two methods is that the resource will be
+downloaded with high-priority, so it’s running a real risk of contending
+with other resources on the page.</p>
+
 <h4>Inapplicable media attribute</h4>
 
 <p>Another way to trigger an early download of a CSS resource without
 triggering its execution is to use the <code>media</code> attribute of
 <code>HTMLLinkElement</code> with the <code>stylesheet</code> <code>rel</code> attribute.
 Such resources are being downloaded at a lower priority by the browser,
-yet not executed.</p>
+yet not executed until the download has finished.</p>
 
-<p><code>&lt;link rel=stylesheet href="async_style.css" media="not all" onload="this.media='all'"&gt;</code></p>
-
-<!-- TODO: test that this is actually working -->
+<p>An example may look something like this:
+<code>&lt;link rel=stylesheet href="async_style.css" media="not all" onload="this.media='all'"&gt;</code></p>
 
 <h4>Progressive CSS loading</h4>
 
@@ -777,68 +789,106 @@ contents below it?</p>
 <p>That would enable us to <a href="https://jakearchibald.com/2016/link-in-body/">load our CSS whenever we actually need
 it</a>, and the browser would just do the right thing.</p>
 
-<p>This is currently the way all modern browsers load CSS, with one huge
-exception. Google Chrome and other Chromium based browsers will block
-the rendering of the entire page as soon as an external CSS resource is
-discovered, even if it's in the body. That used to be the behavior
-WebKit based browsers (e.g. Safari) also took, but that recently
-changed.</p>
+<p>Up until recently, that was (more or less) the way Firefox, Safari and
+Edge loaded CSS, but not Chrome. Chrome and other Chromium based
+browsers blocked the rendering of the entire page as soon as an external
+CSS resource was discovered, even if it was in the body. That meant that
+using that technique would have had a significant performance penalty in
+Chrome.</p>
 
-<p>But good news - starting from Chrome 69,
-Chrome aligned its behavior. This means that developers can now include
-non-critical CSS, using
-<code>&lt;link rel=stylesheet&gt;</code> tags inside their content, without it having a
-negative impact.</p>
+<p>But starting from Chrome 69, Chrome aligned its behavior. This means
+that developers can now include non-critical CSS, using <link
+rel=stylesheet> tags inside their content, without it having a negative
+impact.</p>
+
+<p>One caveat is that Firefox doesn't always block rendering for in-body
+style sheets, which can result in Flash Of Unstyled Content (or FOUC). A
+way to work around that is to include a non-empty script tag after the
+<code>&lt;link&gt;</code> tag. That forces Firefox to block rendering at that point until
+all styles have finished downloading.</p>
+
+<p>An example of the above would be:
+<code>html
+&lt;html&gt;
+  &lt;head&gt;
+  &lt;style&gt;/* Critical styles */&lt;/style&gt;
+  &lt;/head&gt;
+  &lt;body&gt;
+  &lt;!-- Critical content --&gt;
+  &lt;link rel=stylesheet href=foo.css&gt;
+  &lt;script&gt; &lt;/script&gt;&lt;!-- Note the space inside the script --&gt;
+  &lt;!-- Content which is styled by foo.css --&gt;
+  &lt;/body&gt;
+&lt;/html&gt;
+</code></p>
 
 <p>A future improvement might be for browsers to adapt the CSS priority to
 its location, as it turns it from a render-blocking resource to a
 partial blocker.</p>
 
-<!-- Should I rewrite this as if it already happened?? -->
+<!-- Credit Jake Archibald and Pat Meenan for research, technique and implementation -->
+
+<h4>Which one should I use?</h4>
+
+<p>We discussed 4 different techniques to load CSS, but when should you
+use each one of them?</p>
+
+<p>These techniques differ in the time in which the requests are triggered
+as well as in the request’s priority. Also, some of them rely on script
+execution which, some argue, goes against the principles of
+progressive enhancement.</p>
+
+<p>At the end, I believe the easiest and cleanest technique to load
+non-critical styles that may be needed further down the page is to
+include them as link tags in the body, and have them block only the
+content that relies on them.
+If you have styles that are only needed for follow-up pages, you may use
+“inapplicable media” technique, but arguably, <code>&lt;link rel=prefetch&gt;</code> may
+be a better tool for the job.</p>
 
 <h2>JS - critical and non-critical</h2>
 
-<p>Similarly to CSS, blocking Javascript also holds off rendering. Unlike
-CSS, Javascript <a href="https://medium.com/dev-channel/the-cost-of-javascript-84009f51e99e">processing</a> is significantly more expensive than CSS
+<p>Similarly to CSS, blocking JavaScript also holds off rendering. Unlike
+CSS, JavaScript <a href="https://medium.com/dev-channel/the-cost-of-javascript-84009f51e99e">processing</a> is significantly more expensive than CSS
 and its render-blocking execution can be arbitrarily long.</p>
 
-<p>On top of that, non-blocking async Javascript can also block rendering
+<p>On top of that, non-blocking async JavaScript can also block rendering
 in some cases, which we'll discuss further down.</p>
 
-<p>At the same time, in many cases, Javascript is the one responsible for
+<p>At the same time, in many cases, JavaScript is the one responsible for
 engaging user experiences on the web, so we cannot ween ourselves off it
 completely.</p>
 
 <p>What's the middle ground? How can we enable performant JS experiences?
-Advice here actually varies, depending on the role of Javascript in your
+Advice here actually varies, depending on the role of JavaScript in your
 web app.</p>
 
-<h3>JS augmented experience - AKA Progressive Enhancement</h3>
+<h3>JS Enhanced experience - AKA Progressive Enhancement</h3>
 
 <p>Earlier we talked about the advantages of HTML as a
 streaming format. This may be considered an old-school opinion, but in
 order to create the highest performing web experience, it is often
 better to build your application's foundations as HTML and (minimal)
-CSS, and then later augment it with Javascript for improved user
+CSS, and then later enhance it with JavaScript for improved user
 experience.</p>
 
-<p>That doesn't mean you have to shy away from fancy Javascript based
+<p>That doesn't mean you have to shy away from fancy JavaScript based
 animations or avoid dynamic updates to your content using JS. It just
 means that if you can make your initial loading experience not
-Javascript-dependent, it is highly likely that it will be faster.</p>
+JavaScript-dependent, it is highly likely that it will be faster.</p>
 
 <p>I'm not going to go into details regarding writing progressively
 enhanced web apps, as this is well documented elsewhere.</p>
 
-<p>I'm also not going to argue with the fact that in some cases, Javascript
+<p>I'm also not going to argue with the fact that in some cases, JavaScript
 is mandatory and progressive enhancement makes little sense in your
 case.</p>
 
 <p>But if you're delivering content that the user then interacts with, it's 
 likely better for you to deliver that content as
-HTML, and then augment it with JS.</p>
+HTML, and then enhance it with JS.</p>
 
-<h4>How to load augmenting JS</h4>
+<h4>How to Progressively Load JS</h4>
 
 <p>If you are following the progressive enhancement principles, you want to
 load your JS in a non blocking way, but still want these enhancements to
@@ -853,7 +903,8 @@ guess they are not the way to go. But what should you do?</p>
 on the script element that enables it to be non-blocking, download in
 parallel to other resources, and run whenever it arrives at the browser.</p>
 
-<p>While that sounds great in theory, in practice it is racy and can have
+<p>While that sounds great in theory, in practice it can result in race
+conditions and can have
 performance implications:</p>
 
 <ul>
@@ -868,10 +919,10 @@ Arriving earlier to the browser means that their parsing and execution
 download was not!</li>
 </ul>
 
-<p>For that reason, <code>async</code> is a great download mechanism, and should be
+<p>For that reason, <code>async</code> is not a great download mechanism, and should be
 avoided in most cases.</p>
 
-<p>One more thing, in order to even consider making certain scripts
+<p>One more thing: in order to even consider making certain scripts
 <code>async</code>, those scripts must avoid using APIs such as <code>document.write</code>
 which require blocking the parser at the point in which the script is
 injected. They should also avoid assuming the DOM or the CSSOM are in a
@@ -888,9 +939,8 @@ attribute. <code>defer</code> has the following characteristics:</p>
 <li>Deferred scripts run at a particular point in time, after the DOM
 tree is complete and before the DOMContentLoaded event fires. That
 means they run after all inline scripts, and can depend on them.</li>
-<li>Deferred scripts maintain their order of execution to match their
-order of inclusion in the document, which makes it
-easier to have dependencies between them.</li>
+<li>Deferred scripts execute in the order they are included in the
+document, which makes it easier to have dependencies between them.</li>
 </ul>
 
 <p>So defer is a reasonable way to make sure scripts will not interfere
@@ -911,25 +961,30 @@ guarantees that they'd run right before DOMContentLoaded and in order)</p>
 <!-- TODO: make sure that Firefox is really not doing anything smart here -->
 
 <p><aside>
-Up until a few years ago, using <code>&lt;script defer&gt;</code> was not an option.
+Using <code>&lt;script defer&gt;</code> only became a realistic option in the last few
+years.
 IE9 and below had a fatal issue with it, causing content that uses defer
 to be <a href="https://github.com/h5bp/lazyweb-requests/issues/42">racily broken</a>, if the scripts actually have
-interdependencies.</p>
+interdependencies. Depending on the download order, deferred scripts
+which add HTML to the DOM (e.g. using <code>innerHTML</code>) may trigger the
+parser to start executing later scripts <em>before the first script has
+finished running</em>. That was a huge blocker for the adoption of <code>defer</code>
+scripts for many years.</p>
 
 <p>But since the usage of IE9 and older is very low nowadays, unless your
-user composition is very much old IE centric, it is probably safe for you to
+audience is very much old IE centric, it is probably safe for you to
 use defer, and ignore potential issues.
 </aside></p>
 
 <h4>Why not blocking JS at the bottom</h4>
 
 <p>Sending your non-essential scripts as blocking scripts at the bottom of
-the page was also a popular mitigation technique to prevent blocking
-scripts from slowing down you first render. It was born in an age where
-<code>defer</code> and <code>async</code> did not exist, and to be fare, was significantly
+the page used to be a popular mitigation technique to prevent blocking
+scripts from slowing down first render. It was born in an age where
+<code>defer</code> and <code>async</code> did not exist, and to be fair, was significantly
 better than the alternative: blocking scripts at the top of the page.</p>
 
-<p>With that said, it's not necessarily the best option. A few downsides:</p>
+<p>With that said, it's not necessarily the best option, and has some downsides:</p>
 
 <ul>
 <li>While not as bad as blocking the HTML parser and DOM creation at the
@@ -945,8 +1000,8 @@ of the browser's preloader, their download can start relatively late.</li>
 
 <h4>Dynamically added, async false</h4>
 
-<p>Another method to dynamically load scripts is to dynamically add them to
-the document, using Javascript, but make sure they are loaded in order,
+<p>Another method to dynamically load scripts is to insert them to
+the document using JavaScript, but make sure they are loaded in order,
 in case of dependencies between the scripts.</p>
 
 <p>According to the HTML spec, when scripts are dynamically added to the
@@ -1060,15 +1115,15 @@ relevant in those cases, as the HTML tokens contain no interesting
 information regarding the resources that will be required.</p>
 
 <p>So, if you're starting out building a content site, I'd suggest to avoid
-building it in a way that relies on Javascript for the basic rendering.</p>
+building it in a way that relies on JavaScript for the basic rendering.</p>
 
 <p>That doesn't necessarily mean that you cannot develop your site using
 your favorite language and tools. Many frameworks today enable server side
 rendering, where for the first page the user sees, the page gets
-rendered with good old-fashioned HTML and CSS, and Javascript kicks in
+rendered with good old-fashioned HTML and CSS, and JavaScript kicks in
 later, enabling the single page app experience from that point on. </p>
 
-<p>Unfortunately, some popular Javascript frameworks employ server-side
+<p>Unfortunately, some popular JavaScript frameworks employ server-side
 rendering as a way to get the content to the user early, but then
 require large amount of JS execution in order to make that content
 interactive. Whenever possible, you should steer away from such
@@ -1097,7 +1152,7 @@ mind.</p>
 <p>If there's no server-side rendering solution for your case, <code>&lt;link rel=preload&gt;</code> can help you overcome the fact that your site
 is sidestepping the browser's preloader, and give your browser's network
 stack something to do while the user's CPU is churning away executing
-Javascript.</p>
+JavaScript.</p>
 
 <p>You can also consider switching to a lighter-weight version of your
 framework. Many popular frameworks have a lighter alternative, which is
@@ -1129,8 +1184,8 @@ default, and make their experience faster.</p>
 <p>A few things to note regarding lazy loading solutions:</p>
 
 <ul>
-<li>Lazy loading your in-viewport images along with your out-of-viewport
-images is likely to result in regressions for those images.</li>
+<li>Lazy loading your in-viewport images is likely to make them slower, as
+they will be discovered by the browser later.</li>
 <li>The amount of in-viewport images may vary widely between different
 viewports, depending on your application.</li>
 <li>You need to make sure that when the images do get downloaded, that
@@ -1156,7 +1211,7 @@ aspect-ratio, rather than rely on <a href="https://css-tricks.com/aspect-ratio-b
 
 <h3>IntersectionObserver</h3>
 
-<p>Javascript based lazy loading have become significantly easier to
+<p>JavaScript based lazy loading have become significantly easier to
 implement in a performant way with the introduction of
 <a href="https://developers.google.com/web/updates/2016/04/intersectionobserver">IntersectionObserver</a>. 
 Traditionally, JS based lazy loading was based on listening to the
@@ -1204,25 +1259,64 @@ which will maintain the layout as well as present something to your
 users while they are waiting for the full image to load.</li>
 </ul>
 
-<h2>Font-display optional</h2>
+<h2>Fonts</h2>
 
-<p>Up until recently, fonts could have been considered blocking resources
-as well. By default when applied to the content, they are loaded in a way which blocks the content from appearing on screen.
-The behavior of font loading varied between browsers, with some browsers
-blocking text on the font download indefinitely.
-But a few recent changes in browser behavior as well as standards helped
-fix that. Browsers converged on shorter timeout values, afterwhich if
-the font hasn't finished loading, the fallback font will get displayed.
-In terms of standards, the <code>font-display</code> CSS rule enables developers to
-tell the browser which fallback behavior is desired for various fonts.
-In case your fonts <em>are</em> critical and you the user to see
-the fallback font, you can add in a <code>font-display: block</code> which will
-display the fallback font only after a few seconds of the font loading
-being delayed.
-If they are not critical, you can use <code>font-display: swap</code> (if you can
-live with the fonts changing in front of the user) or <code>font-display:
-fallback</code> or <code>font-display: optional</code> if you prefer the users to only
-see the fonts when they are super fast to load or readily available in their cache.</p>
+<p>When classifying resources to rendering-critical vs non-critical ones,
+fonts sit somewhere in the middle. On the one hand, fonts do not block
+the rendering of the page’s general layout. On the other, in many cases,
+they do block the page’s headers or text from becoming visible,
+preventing the user from seeing the content.</p>
+
+<p>The default behavior for font loading varies between different browsers,
+where IE and Edge show the user a fallback font while they wait for the
+fonts to download, while others prefer to block font rendering for 3
+seconds, waiting for fonts to arrive, and only then render the fallback
+font. So you could consider the default font loading behavior of most
+browsers to be blocking, or at least “blocking for 3 seconds”, which is
+not ideal.</p>
+
+<p>So, what’s the best way to control your font loading and make sure your
+users don’t find themselves staring for seconds at a fully laid-out page
+with no text to read?</p>
+
+<p>There are <a href="https://www.zachleat.com/web/comprehensive-webfonts/">various strategies</a> you can take to tackle this, but you have
+two major options.</p>
+
+<h3>Font-display CSS rule</h3>
+
+<p>The <code>font-display</code> CSS rules are fairly widely supported (all modern
+browsers except for Edge), and can enable you to control the browser’s
+behavior regarding font loading and modify it to match your preferences:
+If you can live with the Flash of Unstyled Text (FOUT), where the
+fallback fonts are rendered first, and then replaced by the loaded fonts
+once they arrive, <code>font-display: swap</code> is probably the way to go.
+Alternatively, <code>font-display: fallback</code> enables you to make sure that
+switch from fallback font to loaded font won’t happen too late in the
+page, and guarantees that it will only happen within the first 3 seconds
+of the font loading.
+If you can’t live with FOUT, <code>font-display: optional</code> makes sure that
+the loaded fonts are displayed only when they are immediately available
+to the browser (e.g. when they are cached from a previous session).
+Otherwise, only the fallback font is displayed.
+Since Edge’s default font loading strategy is not very different from
+“swap”, the lack of support is probably not something you have to worry
+about too much.</p>
+
+<p>One major <a href="https://www.zachleat.com/web/font-display-reflow/">caveat</a> with CSS font-display is that different fonts may
+trigger the swap at different times, so if you have multiple font files
+that represent different styles or weights, they may come in at
+different times, resulting in a potentially jarring experience to your
+users.</p>
+
+<p>If this is your case, you may prefer to use…</p>
+
+<h3>The Font Loading API</h3>
+
+<p>The Font Loading API enables you to explicitly load fonts from JS, and
+perform certain actions when they finished loading. As such, if you have
+several font files which need to be rendered together, you can load
+programmatically, and change the CSS rules to apply them (e.g. by adding
+a class on their container) only once all of them finished loading.</p>
 
 <h1>Full Bandwidth Pipe</h1>
 
@@ -1274,8 +1368,7 @@ priority, while using the correct <code>Accept</code> headers.</p>
 your markup.</p>
 
 <p>You can also use preload's <code>onload</code> event to create more sophisticated
-loading patterns using it. We'll discuss some of them later in the
-chapter.</p>
+loading patterns, as we've seen previously.</p>
 
 <p>One thing to note when using preload is the <code>crossorigin</code> attribute.
 When preloading resources which are CORS-enabled fetches (fonts, as well
@@ -1298,11 +1391,11 @@ And since in HTTP/2 the browser has no request queue, discovered resources
 are immediately sent to the server with their appropriate HTTP/2
 priority.</p>
 
-<p>HTTP/2 priorities are fairly complex and not all servers respect them
-fully. Also, because HTTP/2 is built over TCP, prioritization is even
-trickier. There are various scenarios where the server can start sending
+<p>HTTP/2 priorities are fairly complex and not all servers fully respect them.
+Also, because HTTP/2 is built over TCP, prioritization is even
+trickier. It's possible that the server would start sending
 low priority resources, then switch to high-priority ones, but have the
-low-priority resources stuck in the TCP queues, blocking more critical
+low-priority resources fill up the TCP queues, blocking more critical
 content.</p>
 
 <p>That means that the order of requests in HTTP/2 matters as well as their
@@ -1310,10 +1403,9 @@ priorities if not sometimes more. As a result you should be careful that
 using preload does not result in low-priority resources being requested
 before high-priority ones.
 You can do that by incorporating the <code>&lt;link&gt;</code> elements in your markup
-below the critical-path resources. For <code>Link</code> headers, there's <a href="https://chromium-review.googlesource.com/c/chromium/src/+/720798">underway
-work</a> to resolve that in Chromium.</p>
+below the critical-path resources. For <code>Link</code> headers, there's <a href="https://chromium-review.googlesource.com/c/chromium/src/+/720798">work underway</a> to resolve that in Chromium.</p>
 
-<p>There are also issues when preloading content delivered over separate
+<p>There are also issues when preloaded content is delivered over separate
 connections. In those cases, there is no server to correlate the
 requests according to their priorities. But we'll discuss that more when
 we talk about contention.</p>
@@ -1323,13 +1415,13 @@ we talk about contention.</p>
 <h1>Minimal content</h1>
 
 <p>We talked earlier about properly splitting and prioritizing critical and
-non-critical content, but turns our that on the web there a third class
+non-critical content, but turns out that on the web there a third class
 of content: unneeded content.</p>
 
 <h2>Don't download unused content</h2>
 
 <p>Due to the use of CSS frameworks, large JS libraries, as well as simple code churn, content on the web tends of contain a large percentage of unused code.
-There are many tools today that can help you spot out such unused code
+There are many tools today that can help you spot such unused code
 as part of your build process and weed it out.</p>
 
 <p><a href="https://github.com/GoogleChrome/puppeteer/blob/master/docs/api.md#class-coverage">Puppeteer coverage API</a> enables you to detect such unused
@@ -1343,7 +1435,7 @@ the amount of unused JS in your application.</p>
 <p>With that said, it's a bit tricky to use such tools to distinguish unused code from code that will be used later on in
 some user scenario. That's probably the part that requires developer
 intervention and understanding of your application.
-But once you detected such code, it would probably be better to lazy
+But once you detect such code, it would probably be better to lazy
 load it when that scenario is likely to actually happen, rather
 than loading it upfront and penalize users for no reason.</p>
 
@@ -1381,8 +1473,8 @@ the cache, larger resources are more likely to be stored over multiple
 blocks, which on spinning-disk based caches may mean longer retrieval
 times.</p>
 
-<p>For Javascript, extra code also means extra parsing costs. That may be
-offset by Javascript's optimized code caching, but those may get evicted
+<p>For JavaScript, extra code also means extra parsing costs. That may be
+offset by JavaScript's optimized code caching, but those may get evicted
 before your content does.</p>
 
 <!-- TODO: Make sure that's actually true -->
@@ -1405,7 +1497,7 @@ that a lot of it is shared across sites and can theoretically be very
 efficiently compressed if we were to use a static dictionary that is
 based on some older version of that framework.</p>
 
-<p>Gzip have always had static compression disctionaries (albeit limited in
+<p>Gzip have always had static compression dictionaries (albeit limited in
 size). Brotli recently joined it and defined <a href="https://tools.ietf.org/html/draft-vandevenne-shared-brotli-format-00">shared brotli</a> dictionaries.</p>
 
 <p>At the same time, there's been <a href="https://discourse.wicg.io/t/a-zip-api-in-the-browser/14/26">proposals</a> to create a browser native compression API,
@@ -1467,7 +1559,7 @@ among hundreds of requests.</li>
 <p>So, bundling still has a role and can overall improve performance if
 your site has many different JS or CSS resources. But, currently,
 bundling also has a cost. We've talked earlier about the fact that both
-Javascript and CSS are resources that must be executed in their
+JavaScript and CSS are resources that must be executed in their
 entirety. When we bundle resources together, we effectively tell the
 browser that they cannot be executed separately, and none of them starts
 executing until all of them were downloaded and parsed.</p>
@@ -1482,11 +1574,11 @@ single unit, they may be parsed progressively.
 </aside></p>
 
 <p>Another downside of bundling is the loss of caching granularity. When
-serving many small resources, if any of them is no longer fresh and
-needs updating, it gets updated on its own, and all the rest can remain
-intact. But once we've bundled resources, each small change in each one
+serving resources separately, if any of them is no longer fresh and
+needs updating, they can be downloaded on their own, and all the rest can be retrieved from cache.
+But once we've bundled resources, each small change in each one
 of the files means that all of them must be downloaded again. Even
-worse, for Javascript, it means that the optimized compiled code that
+worse, for JavaScript, it means that the optimized compiled code that
 the browser created for that file is no longer valid, and the browser
 has to create it again, spending precious user CPU time on that.</p>
 
@@ -1500,7 +1592,7 @@ enable us to create a bundle comprised of many smaller files, with each
 one of them maintaining its identity as an independent entity. That
 means each one of them can be cached separately (based on its own
 caching lifetime directives) and processed separately. Therefore, we
-would no longer have to download the entire package in order to process
+would no longer have to download the entire package in order to update
 e.g. the first resource in it, and we won't have to invalidate all of it
 if a single resource in it has changed or needs revalidation.</p>
 
@@ -1599,7 +1691,7 @@ the viewport, such as:</p>
 <p>Client Hints is a content negotiation mechanism which can be also be
 used to serve responsive images, among other resource types.</p>
 
-<p>Content negotiation means that the client indicates the server various
+<p>Content negotiation means that the client indicates to the server various
 parameters about the resources that it is interested in, and the server
 uses that in order to send it with the right resource.</p>
 
@@ -1648,7 +1740,7 @@ supports.</p>
 <h2>Font subsetting</h2>
 
 <p>Web fonts is another type of content where you can send your users
-excessive data. Fonts often contain full set of characters for
+excessive data. Fonts often contain full set of characters of
 non-English languages, which may or may not be relevant for your
 content. These extra characters can add up, and if you're not using
 them, it might be best to drop them from the downloaded font entirely.
@@ -1667,7 +1759,7 @@ fonts to the minimal subset you need.</p>
 handle priorities in HTTP/2 by sending the requests to the server, and
 letting it send the high priority resources first.
 However, there's one big problem in that scheme: on the web today, there
-is no single server. Most sites are served with a multitude of servers, as
+is no single server. Most sites are served from a multitude of servers, as
 the origin is built out of multiple different hosts, static resources
 served from the S3 or some other static hosting provider and 3rd parties
 are served from entirely different services.</p>
@@ -1717,7 +1809,7 @@ things when the hosts map to multiple IPs.</li>
 
 <p>The fact that <a href="https://daniel.haxx.se/blog/2016/08/18/http2-connection-coalescing/">different browsers implement slightly different DNS
 requirements</a> makes using this mechanism
-in practice even less reliable.</p>
+even less reliable in practice.</p>
 
 <h2>Secondary certs</h2>
 
@@ -1770,7 +1862,7 @@ are multiple connections, and resources on these separate connections
 are contending with each other. But there are also scenarios in H2 where
 resources contend with same priority resources on that same connection.</p>
 
-<p>Consider a scenario where multiple Javascript resources are being
+<p>Consider a scenario where multiple JavaScript resources are being
 downloaded from a server, all in the same priority. The server can send
 those resources down in 2 different ways:
 1) Interleave the resources, sending a buffer of each of them.
@@ -1984,7 +2076,7 @@ other proprietary means) that it should be.</p>
 <p>Another great way to reduce the impact of latency and increase the power
 of caching in the browser is to use service workers.</p>
 
-<p>A Service Worker is a Javascript-based network proxies in the browser,
+<p>A Service Worker is a JavaScript-based network proxy in the browser,
 enabling the developer to inspect outgoing requests and incoming
 responses and manipulate them. As such, service workers are extremely
 powerful, and enable developer to go beyond the regular browser HTTP cache in caching their resources.
@@ -2179,7 +2271,7 @@ through new loading paradigms.</li>
 <li>Early delivery and resource discovery will be fixed using Server Push
 (with Cache Digests), Preload and priority hints. Build tools will
 automatically create those instructions for developers at build time.</li>
-<li>Javascript resources will be bundled using WebPackages, enabling
+<li>JavaScript resources will be bundled using WebPackages, enabling
 improved compression, caching granularity, and (combined with Cache
 Digests) avoiding to send down resources already in the browser's cache.</li>
 <li>Common build processes will also help make sure completely unused JS
