@@ -754,16 +754,19 @@ download of the preload resource, only after the document was painted in
 order to avoid having it contending on bandwidth with more critical
 resources.
 
+The downside of these two methods is that the resource will be
+downloaded with high-priority, so it’s running a real risk of contending
+with other resources on the page.
+
 #### Inapplicable media attribute
 Another way to trigger an early download of a CSS resource without
 triggering its execution is to use the `media` attribute of
 `HTMLLinkElement` with the `stylesheet` `rel` attribute.
 Such resources are being downloaded at a lower priority by the browser,
-yet not executed.
+yet not executed until the download has finished.
 
+An example may look something like this:
 `<link rel=stylesheet href="async_style.css" media="not all" onload="this.media='all'">`
-
-<!-- TODO: test that this is actually working -->
 
 #### Progressive CSS loading
 The above methods all work but are not necessarily easy to use, as they
@@ -815,6 +818,23 @@ partial blocker.
 
 [link_in_body]: https://jakearchibald.com/2016/link-in-body/
 <!-- Credit Jake Archibald and Pat Meenan for research, technique and implementation -->
+
+#### Which one should I use?
+We discussed 4 different techniques to load CSS, but when should you
+use each one of them?
+
+These techniques differ in the time in which the requests are triggered
+as well as in the request’s priority. Also, some of them rely on script
+execution which, some argue, goes against the principles of
+progressive enhancement.
+
+At the end, I believe the easiest and cleanest technique to load
+non-critical styles that may be needed further down the page is to
+include them as link tags in the body, and have them block only the
+content that relies on them.
+If you have styles that are only needed for follow-up pages, you may use
+“inapplicable media” technique, but arguably, `<link rel=prefetch>` may
+be a better tool for the job.
 
 ## JS - critical and non-critical
 Similarly to CSS, blocking JavaScript also holds off rendering. Unlike
@@ -931,7 +951,11 @@ Using `<script defer>` only became a realistic option in the last few
 years.
 IE9 and below had a fatal issue with it, causing content that uses defer
 to be [racily broken][ie9_defer], if the scripts actually have
-interdependencies.
+interdependencies. Depending on the download order, deferred scripts
+which add HTML to the DOM (e.g. using `innerHTML`) may trigger the
+parser to start executing later scripts *before the first script has
+finished running*. That was a huge blocker for the adoption of `defer`
+scripts for many years.
 
 But since the usage of IE9 and older is very low nowadays, unless your
 audience is very much old IE centric, it is probably safe for you to
@@ -1220,25 +1244,63 @@ solution:
 which will maintain the layout as well as present something to your
 users while they are waiting for the full image to load.
 
+## Fonts
+When classifying resources to rendering-critical vs non-critical ones,
+fonts sit somewhere in the middle. On the one hand, fonts do not block
+the rendering of the page’s general layout. On the other, in many cases,
+they do block the page’s headers or text from becoming visible,
+preventing the user from seeing the content.
 
-## Font-display optional
-Up until recently, fonts could have been considered blocking resources
-as well. By default when applied to the content, they are loaded in a way which blocks the content from appearing on screen.
-The behavior of font loading varied between browsers, with some browsers
-blocking text on the font download indefinitely.
-But a few recent changes in browser behavior as well as standards helped
-fix that. Browsers converged on shorter timeout values, after which if
-the font hasn't finished loading, the fallback font will get displayed.
-In terms of standards, the `font-display` CSS rule enables developers to
-tell the browser which fallback behavior is desired for various fonts.
-In case your fonts *are* critical and you the user to see
-the fallback font, you can add in a `font-display: block` which will
-display the fallback font only after a few seconds of the font loading
-being delayed.
-If they are not critical, you can use `font-display: swap` (if you can
-live with the fonts changing in front of the user) or `font-display:
-fallback` or `font-display: optional` if you prefer the users to only
-see the fonts when they are super fast to load or readily available in their cache.
+The default behavior for font loading varies between different browsers,
+where IE and Edge show the user a fallback font while they wait for the
+fonts to download, while others prefer to block font rendering for 3
+seconds, waiting for fonts to arrive, and only then render the fallback
+font. So you could consider the default font loading behavior of most
+browsers to be blocking, or at least “blocking for 3 seconds”, which is
+not ideal.
+
+So, what’s the best way to control your font loading and make sure your
+users don’t find themselves staring for seconds at a fully laid-out page
+with no text to read?
+
+There are [various strategies][font_strategies] you can take to tackle this, but you have
+two major options.
+
+[font_strategies]: https://www.zachleat.com/web/comprehensive-webfonts/
+
+### Font-display CSS rule
+The `font-display` CSS rules are fairly widely supported (all modern
+browsers except for Edge), and can enable you to control the browser’s
+behavior regarding font loading and modify it to match your preferences:
+If you can live with the Flash of Unstyled Text (FOUT), where the
+fallback fonts are rendered first, and then replaced by the loaded fonts
+once they arrive, `font-display: swap` is probably the way to go.
+Alternatively, `font-display: fallback` enables you to make sure that
+switch from fallback font to loaded font won’t happen too late in the
+page, and guarantees that it will only happen within the first 3 seconds
+of the font loading.
+If you can’t live with FOUT, `font-display: optional` makes sure that
+the loaded fonts are displayed only when they are immediately available
+to the browser (e.g. when they are cached from a previous session).
+Otherwise, only the fallback font is displayed.
+Since Edge’s default font loading strategy is not very different from
+“swap”, the lack of support is probably not something you have to worry
+about too much.
+
+One major caveat with CSS font-display is that different fonts may
+trigger the swap at different times, so if you have multiple font files
+that represent different styles or weights, they may come in at
+different times, resulting in a potentially jarring experience to your
+users.
+
+If this is your case, you may prefer to use…
+### The Font Loading API
+The Font Loading API enables you to explicitly load fonts from JS, and
+perform certain actions when they finished loading. As such, if you have
+several font files which need to be rendered together, you can load
+programmatically, and change the CSS rules to apply them (e.g. by adding
+a class on their container) only once all of them finished loading.
+
 
 # Full Bandwidth Pipe
 Because web content is comprised of many smaller resources,
@@ -1287,8 +1349,7 @@ Using it can be as simple as including
 your markup.
 
 You can also use preload's `onload` event to create more sophisticated
-loading patterns using it. We'll discuss some of them later in the
-chapter.
+loading patterns, as we've seen previously.
 
 One thing to note when using preload is the `crossorigin` attribute.
 When preloading resources which are CORS-enabled fetches (fonts, as well
@@ -1310,11 +1371,11 @@ And since in HTTP/2 the browser has no request queue, discovered resources
 are immediately sent to the server with their appropriate HTTP/2
 priority.
 
-HTTP/2 priorities are fairly complex and not all servers respect them
-fully. Also, because HTTP/2 is built over TCP, prioritization is even
-trickier. There are various scenarios where the server can start sending
+HTTP/2 priorities are fairly complex and not all servers fully respect them.
+Also, because HTTP/2 is built over TCP, prioritization is even
+trickier. It's possible that the server would start sending
 low priority resources, then switch to high-priority ones, but have the
-low-priority resources stuck in the TCP queues, blocking more critical
+low-priority resources fill up the TCP queues, blocking more critical
 content.
 
 That means that the order of requests in HTTP/2 matters as well as their
@@ -1322,10 +1383,9 @@ priorities if not sometimes more. As a result you should be careful that
 using preload does not result in low-priority resources being requested
 before high-priority ones.
 You can do that by incorporating the `<link>` elements in your markup
-below the critical-path resources. For `Link` headers, there's [underway
-work][preload_medium_delay] to resolve that in Chromium.
+below the critical-path resources. For `Link` headers, there's [work underway][preload_medium_delay] to resolve that in Chromium.
  
-There are also issues when preloading content delivered over separate
+There are also issues when preloaded content is delivered over separate
 connections. In those cases, there is no server to correlate the
 requests according to their priorities. But we'll discuss that more when
 we talk about contention.
@@ -1336,12 +1396,12 @@ we talk about contention.
 
 # Minimal content
 We talked earlier about properly splitting and prioritizing critical and
-non-critical content, but turns our that on the web there a third class
+non-critical content, but turns out that on the web there a third class
 of content: unneeded content.
 
 ## Don't download unused content
 Due to the use of CSS frameworks, large JS libraries, as well as simple code churn, content on the web tends of contain a large percentage of unused code.
-There are many tools today that can help you spot out such unused code
+There are many tools today that can help you spot such unused code
 as part of your build process and weed it out.
 
 [Puppeteer coverage API][Puppeteer] enables you to detect such unused
@@ -1357,7 +1417,7 @@ the amount of unused JS in your application.
 With that said, it's a bit tricky to use such tools to distinguish unused code from code that will be used later on in
 some user scenario. That's probably the part that requires developer
 intervention and understanding of your application.
-But once you detected such code, it would probably be better to lazy
+But once you detect such code, it would probably be better to lazy
 load it when that scenario is likely to actually happen, rather
 than loading it upfront and penalize users for no reason.
 
@@ -1420,7 +1480,7 @@ that a lot of it is shared across sites and can theoretically be very
 efficiently compressed if we were to use a static dictionary that is
 based on some older version of that framework.
 
-Gzip have always had static compression disctionaries (albeit limited in
+Gzip have always had static compression dictionaries (albeit limited in
 size). Brotli recently joined it and defined [shared brotli][shared_brotli] dictionaries.
 
 At the same time, there's been [proposals][zip_proposal] to create a browser native compression API,
@@ -1497,9 +1557,9 @@ single unit, they may be parsed progressively.
 </aside>
 
 Another downside of bundling is the loss of caching granularity. When
-serving many small resources, if any of them is no longer fresh and
-needs updating, it gets updated on its own, and all the rest can remain
-intact. But once we've bundled resources, each small change in each one
+serving resources separately, if any of them is no longer fresh and
+needs updating, they can be downloaded on their own, and all the rest can be retrieved from cache.
+But once we've bundled resources, each small change in each one
 of the files means that all of them must be downloaded again. Even
 worse, for JavaScript, it means that the optimized compiled code that
 the browser created for that file is no longer valid, and the browser
@@ -1515,7 +1575,7 @@ enable us to create a bundle comprised of many smaller files, with each
 one of them maintaining its identity as an independent entity. That
 means each one of them can be cached separately (based on its own
 caching lifetime directives) and processed separately. Therefore, we
-would no longer have to download the entire package in order to process
+would no longer have to download the entire package in order to update
 e.g. the first resource in it, and we won't have to invalidate all of it
 if a single resource in it has changed or needs revalidation.
 
@@ -1619,7 +1679,7 @@ It can also become a bit more complex in more involved designs:
 Client Hints is a content negotiation mechanism which can be also be
 used to serve responsive images, among other resource types.
 
-Content negotiation means that the client indicates the server various
+Content negotiation means that the client indicates to the server various
 parameters about the resources that it is interested in, and the server
 uses that in order to send it with the right resource.
 
@@ -1666,7 +1726,7 @@ supports.
 
 ## Font subsetting
 Web fonts is another type of content where you can send your users
-excessive data. Fonts often contain full set of characters for
+excessive data. Fonts often contain full set of characters of
 non-English languages, which may or may not be relevant for your
 content. These extra characters can add up, and if you're not using
 them, it might be best to drop them from the downloaded font entirely.
@@ -1685,7 +1745,7 @@ We talked earlier about resource priorities and the way that browsers
 handle priorities in HTTP/2 by sending the requests to the server, and
 letting it send the high priority resources first.
 However, there's one big problem in that scheme: on the web today, there
-is no single server. Most sites are served with a multitude of servers, as
+is no single server. Most sites are served from a multitude of servers, as
 the origin is built out of multiple different hosts, static resources
 served from the S3 or some other static hosting provider and 3rd parties
 are served from entirely different services.
@@ -1733,7 +1793,7 @@ things when the hosts map to multiple IPs.
 
 The fact that [different browsers implement slightly different DNS
 requirements][firefox_connection_coalesing] makes using this mechanism
-in practice even less reliable.
+even less reliable in practice.
 
 [firefox_connection_coalesing]: https://daniel.haxx.se/blog/2016/08/18/http2-connection-coalescing/
 
@@ -1985,7 +2045,7 @@ Unfortunately, that method has no standard alternative at the moment.
 Another great way to reduce the impact of latency and increase the power
 of caching in the browser is to use service workers.
 
-A Service Worker is a JavaScript-based network proxies in the browser,
+A Service Worker is a JavaScript-based network proxy in the browser,
 enabling the developer to inspect outgoing requests and incoming
 responses and manipulate them. As such, service workers are extremely
 powerful, and enable developer to go beyond the regular browser HTTP cache in caching their resources.
