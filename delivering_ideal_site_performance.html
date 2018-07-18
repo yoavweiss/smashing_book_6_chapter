@@ -175,6 +175,73 @@ on the screen and eventually paint them.</p>
 
 <p><img src="media/critical_path.jpg" alt="" title="" /></p>
 
+<h3>Request destination and credentials mode</h3>
+
+<p>One important thing to understand about loaded resources in the browser
+is that each request has its own destination as well as credentials
+mode.</p>
+
+<h4>Request destination</h4>
+
+<p>The request's <a href="https://fetch.spec.whatwg.org/#concept-request-destination">destination</a> indicates what "type" of resource we're
+expecting to receive from the server and how that resource will be used.
+Different destinations include "stylesheet", "script", "image", "font"
+and more. A requests' destination has several implications on resource
+loading. As we'll discuss later, it is used in determining the priority
+of the request. It is also used in various internal caches in the
+browser to make sure a previous response can be served to a current
+request only when their destinations match.</p>
+
+<h4>Credentials mode</h4>
+
+<p>A request's <a href="https://fetch.spec.whatwg.org/#concept-request-credentials-mode">credentials mode</a> determines whether the request gets
+credentials information (cookies in the typical case) sent along with it
+to the server. Possible values can be:</p>
+
+<ul>
+<li>"include" - indicating that a request will have credentials</li>
+<li>"omit" - indicating that it will not have credentials</li>
+<li>"same origin" - indicating that a request will have credentials only
+when sent to the same origin.</li>
+</ul>
+
+<p>Each resource type may have different credentials mode by default.
+Resource fetches triggered by <code>&lt;img&gt;</code> and <code>&lt;script&gt;</code> will have a default
+credentials mode of "include" by default, while font fetches will have a
+"same origin" credentials mode. <code>fetch()</code> calls used to have a default
+"omit" mode, but recently changed to "same origin".</p>
+
+<p>All that to say that as a performance-aware web developer, you need to
+pay close attention to the credentials mode of the resources you're loading.</p>
+
+<p>In markup, developers can also change the credentials mode of the
+resources they load by including the <a href="https://html.spec.whatwg.org/multipage/urls-and-fetching.html#cors-settings-attributes"><code>crossorigin</code></a> attribute, which
+modifies the default for markup-based resource fetches:</p>
+
+<ul>
+<li>"anonymous" or an empty value indicates a "same origin" credentials
+mode.</li>
+<li>"use-credentials" indicates an "include" credentials mode.</li>
+</ul>
+
+<p>Note that there's no current value which results in an "omit"
+credentials mode.</p>
+
+<p>Why does the credentials mode matter?</p>
+
+<p>First of all, you may expect cookies on the server for a certain
+request and understanding credentials mode will help you understand when
+they'd be there and when they will not be.</p>
+
+<p>Otherwise, similarly to the request
+destination, the credentials mode determines if a request and a response
+can get matched in the browser's internal caches. On top of that, some
+browsers (most notably Chrome) will use separate connections for
+requests of different credential modes. We'll expand later the impact of
+that.</p>
+
+<h3>All set?</h3>
+
 <p>Now with a better understanding of the way browsers load resources,
 let’s take a look at the different conditions required to make that
 loading as fast as possible.</p>
@@ -224,8 +291,10 @@ will mean that there are very few RTTs which get in the way of content delivered
 
 <p>Preconnect is browser hint which tells it the page is about to download
 a resource from a certain host, enabling it to connect to it ahead of time.
-It is expressed as a <code>rel</code> attribute on a <code>&lt;link&gt;</code> element. For example:
-<code>&lt;link rel=preconnect href="https://www.example.com"&gt;</code></p>
+It is expressed as a <code>rel</code> attribute on a <code>&lt;link&gt;</code> element. For example,
+<code>&lt;link rel=preconnect href="https://www.example.com"&gt;</code> tells the browser
+to create a connection to the host <code>www.example.com</code> even if it hasn’t
+encountered any resources on that host just yet.</p>
 
 <p>That is another way to get rid of these pesky RTT - just get them
 out of the way sooner, so that they don't get in the way of your site's
@@ -527,7 +596,7 @@ of a specific request is by... not sending it up to the server in the
 first place. Browsers have a request queue of requests that were discovered
 but should not yet be sent up to the server because there are more
 critical resources in flight, and we don't want the less-critical ones
-to contend on bandwidth with them. </p>
+to contend on bandwidth with them.</p>
 
 <p>Different browsers use different schemes there: some hold off all
 non-critical requests while critical ones are in flights, while other
@@ -1512,8 +1581,9 @@ of most of our unused code and not transport it to our users every time.</p>
 <ul>
 <li>These efforts are both still in their early phases, so it may take a
 while before you can take advantage of them.</li>
-<li>Eliminating the bytes over the wire still doesn't prevent us from
-paying up their parsing costs at runtime. So even if we could use it
+<li>Compressing the bytes over the network doesn't prevent us from
+paying up their parsing costs at runtime, as the parse time of JS is
+related to its uncompressed size. So even if we could use it
 today, this should only be a fallback in cases where the removal of
 unused code is not feasible.</li>
 </ul>
@@ -1565,12 +1635,14 @@ browser that they cannot be executed separately, and none of them starts
 executing until all of them were downloaded and parsed.</p>
 
 <p><aside>
-At least in Chrome, starting from Chrome 66, Javscript can be
-<a href="https://v8project.blogspot.com/2018/03/background-compilation.html">streamingly parsed</a> - parsed
-on a background thread as it is being downloaded. That means that at
+Chrome 66 introduced a <a href="https://v8project.blogspot.com/2018/03/background-compilation.html">streaming parser</a> for JavaScript so it can be
+parsed on a background thread as it is being downloaded.
+That means that at
 least in some cases, the "all or nothing" approach to JS is slightly
 mitigated. So even though large bundles still have to be executed as a
 single unit, they may be parsed progressively.
+Other browsers don’t yet have streamed parsing for JS, but at least some
+of them are actively looking into that area.
 </aside></p>
 
 <p>Another downside of bundling is the loss of caching granularity. When
@@ -1631,7 +1703,7 @@ user's device.</p>
 
 <p>The <code>srcset</code> attribute declares multiple image alternatives to the
 browser, as well as their descriptors. <code>x</code> descriptors tell the browser
-about the image resource's image density. <code>w</code> descriptors tell it about
+about the image resource's density. <code>w</code> descriptors tell it about
 the image resource's width.</p>
 
 <p>These enable the browser to pick the right resource, based on the
@@ -1821,7 +1893,7 @@ over the other connections used on the site.</p>
 
 <p>In some cases, doing so is easy (e.g. sharded domains that all point to
 the same set of servers). In other cases, that can be harder and the
-origin will need to relay those connections to their actual origins, or
+origin will need to proxy those connections to their actual origins, or
 rely on a CDN service to do that for it.</p>
 
 <h2>Delayed requests</h2>

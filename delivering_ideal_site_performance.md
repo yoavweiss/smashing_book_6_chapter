@@ -173,6 +173,72 @@ on the screen and eventually paint them.
 
 ![](media/critical_path.jpg)
 
+### Request destination and credentials mode
+
+One important thing to understand about loaded resources in the browser
+is that each request has its own destination as well as credentials
+mode.
+
+#### Request destination
+The request's [destination][destination] indicates what "type" of resource we're
+expecting to receive from the server and how that resource will be used.
+Different destinations include "stylesheet", "script", "image", "font"
+and more. A requests' destination has several implications on resource
+loading. As we'll discuss later, it is used in determining the priority
+of the request. It is also used in various internal caches in the
+browser to make sure a previous response can be served to a current
+request only when their destinations match.
+
+#### Credentials mode
+
+A request's [credentials mode][credentials] determines whether the request gets
+credentials information (cookies in the typical case) sent along with it
+to the server. Possible values can be:
+
+* "include" - indicating that a request will have credentials
+* "omit" - indicating that it will not have credentials
+* "same origin" - indicating that a request will have credentials only
+  when sent to the same origin.
+
+Each resource type may have different credentials mode by default.
+Resource fetches triggered by `<img>` and `<script>` will have a default
+credentials mode of "include" by default, while font fetches will have a
+"same origin" credentials mode. `fetch()` calls used to have a default
+"omit" mode, but recently changed to "same origin".
+
+All that to say that as a performance-aware web developer, you need to
+pay close attention to the credentials mode of the resources you're loading.
+
+In markup, developers can also change the credentials mode of the
+resources they load by including the [`crossorigin`][crossorigin] attribute, which
+modifies the default for markup-based resource fetches:
+
+* "anonymous" or an empty value indicates a "same origin" credentials
+  mode.
+* "use-credentials" indicates an "include" credentials mode.
+
+Note that there's no current value which results in an "omit"
+credentials mode.
+
+[credentials]: https://fetch.spec.whatwg.org/#concept-request-credentials-mode
+[destination]: https://fetch.spec.whatwg.org/#concept-request-destination
+[crossorigin]: https://html.spec.whatwg.org/multipage/urls-and-fetching.html#cors-settings-attributes
+
+Why does the credentials mode matter?
+
+First of all, you may expect cookies on the server for a certain
+request and understanding credentials mode will help you understand when
+they'd be there and when they will not be.
+
+Otherwise, similarly to the request
+destination, the credentials mode determines if a request and a response
+can get matched in the browser's internal caches. On top of that, some
+browsers (most notably Chrome) will use separate connections for
+requests of different credential modes. We'll expand later the impact of
+that.
+
+### All set?
+
 Now with a better understanding of the way browsers load resources,
 let’s take a look at the different conditions required to make that
 loading as fast as possible.
@@ -218,8 +284,10 @@ will mean that there are very few RTTs which get in the way of content delivered
 ### Preconnect
 Preconnect is browser hint which tells it the page is about to download
 a resource from a certain host, enabling it to connect to it ahead of time.
-It is expressed as a `rel` attribute on a `<link>` element. For example:
-`<link rel=preconnect href="https://www.example.com">`
+It is expressed as a `rel` attribute on a `<link>` element. For example,
+`<link rel=preconnect href="https://www.example.com">` tells the browser
+to create a connection to the host `www.example.com` even if it hasn’t
+encountered any resources on that host just yet.
 
 That is another way to get rid of these pesky RTT - just get them
 out of the way sooner, so that they don't get in the way of your site's
@@ -526,7 +594,7 @@ of a specific request is by... not sending it up to the server in the
 first place. Browsers have a request queue of requests that were discovered
 but should not yet be sent up to the server because there are more
 critical resources in flight, and we don't want the less-critical ones
-to contend on bandwidth with them. 
+to contend on bandwidth with them.
 
 Different browsers use different schemes there: some hold off all
 non-critical requests while critical ones are in flights, while other
@@ -1496,8 +1564,9 @@ Two things are worth noting regarding that:
 
 * These efforts are both still in their early phases, so it may take a
   while before you can take advantage of them.
-* Eliminating the bytes over the wire still doesn't prevent us from
-  paying up their parsing costs at runtime. So even if we could use it
+* Compressing the bytes over the network doesn't prevent us from
+  paying up their parsing costs at runtime, as the parse time of JS is
+related to its uncompressed size. So even if we could use it
 today, this should only be a fallback in cases where the removal of
 unused code is not feasible.
 
@@ -1550,12 +1619,14 @@ browser that they cannot be executed separately, and none of them starts
 executing until all of them were downloaded and parsed.
 
 <aside>
-At least in Chrome, starting from Chrome 66, Javscript can be
-[streamingly parsed][stream_parsing] - parsed
-on a background thread as it is being downloaded. That means that at
+Chrome 66 introduced a [streaming parser][stream_parsing] for JavaScript so it can be
+parsed on a background thread as it is being downloaded.
+That means that at
 least in some cases, the "all or nothing" approach to JS is slightly
 mitigated. So even though large bundles still have to be executed as a
 single unit, they may be parsed progressively.
+Other browsers don’t yet have streamed parsing for JS, but at least some
+of them are actively looking into that area.
 </aside>
 
 Another downside of bundling is the loss of caching granularity. When
@@ -1622,7 +1693,7 @@ user's device.
 
 The `srcset` attribute declares multiple image alternatives to the
 browser, as well as their descriptors. `x` descriptors tell the browser
-about the image resource's image density. `w` descriptors tell it about
+about the image resource's density. `w` descriptors tell it about
 the image resource's width.
 
 These enable the browser to pick the right resource, based on the
@@ -1808,7 +1879,7 @@ over the other connections used on the site.
 
 In some cases, doing so is easy (e.g. sharded domains that all point to
 the same set of servers). In other cases, that can be harder and the
-origin will need to relay those connections to their actual origins, or
+origin will need to proxy those connections to their actual origins, or
 rely on a CDN service to do that for it.
 
 ## Delayed requests
