@@ -390,7 +390,12 @@ connections to other hosts from taking place. So only preconnect to
 hosts your browser would need to preconnect to, and prefer to do that
 roughly in the same order as the browser would use those connections.
 
-<!-- TODO: do I need to add a comment about preconnect and crossorigin?  -->
+When using preconnect, you also need to pay close attention to the
+credentials mode of the resources will use that connection. Since Chrome
+uses different connections for different credential mode requests, you
+need to let the browser know which connection “type” it needs to
+preconnect to. You can do that with the `crossorigin` attribute on
+preconnect `<link>` element.
 
 And as far as adaptive congestion window goes, that requires some more
 server-side smarts, but hopefully with the advent of network info in
@@ -1422,10 +1427,12 @@ You can also use preload's `onload` event to create more sophisticated
 loading patterns, as we've seen previously.
 
 One thing to note when using preload is the `crossorigin` attribute.
-When preloading resources which are CORS-enabled fetches (fonts, as well
+The HTMLLinkElement’s default credentials mode is "include". Therefore, when
+preloading resources with a different credentials mode (e.g. fonts, as well
 as `fetch()`, `XMLHTTPRequest` and ES6 modules by default), you need to
 make sure the `crossorigin` attribute is properly set on your preload
-link, otherwise the resource may not be reused which may result in
+link, otherwise the resource may not be reused (since the internal
+caches will refuse to serve the preload response to the future request) which may result in
 double downloads.
 
 ### Preloads "jumping the queue"
