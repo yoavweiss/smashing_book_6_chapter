@@ -371,10 +371,11 @@ congestion window for an in-flight connection in TCP implementations today.
 ### What to do?
 
 How can you make sure that you're minimizing your protocol overhead?
-That depends on your server's (or your CDN's) network stack.
-Moving to QUIC, TLS/1.3 or TFO require upgrading your server's network stack, or
-turning on those capabilities in your CDN. These are all relatively new
-protocol enhancements, so support may not be wide-spread at the moment.
+That depends on your server's network stack.
+Moving to QUIC, TLS/1.3 or TFO may require upgrading your server's network stack, or
+turning on those capabilities in its configuration. Alternatively, you can use a Content-Delivery Network (or CDN) which supports those protocols, and have servers which sit between your users and your servers.
+
+These protocol enhancements are all relatively new, so support may not be widespread at the moment.
 QUIC specifically is still not standardized, so it can be hard to self
 deploy it, as that would require frequent updates as the Chrome
 implementation evolves.
@@ -918,7 +919,7 @@ On top of that, non-blocking async JavaScript can also block rendering
 in some cases, which we'll discuss further down.
 
 At the same time, in many cases, JavaScript is the one responsible for
-engaging user experiences on the web, so we cannot ween ourselves off it
+engaging user experiences on the web, so we cannot wean ourselves off it
 completely.
 
 What's the middle ground? How can we enable performant JS experiences?
@@ -1432,7 +1433,7 @@ preloading resources with a different credentials mode (e.g. fonts, as well
 as `fetch()`, `XMLHTTPRequest` and ES6 modules by default), you need to
 make sure the `crossorigin` attribute is properly set on your preload
 link, otherwise the resource may not be reused (since the internal
-caches will refuse to serve the preload response to the future request) which may result in
+caches will refuse to serve the preloaded response to the future request) which may result in
 double downloads.
 
 ### Preloads "jumping the queue"
@@ -1534,9 +1535,12 @@ the cache, larger resources are more likely to be stored over multiple
 blocks, which on spinning-disk based caches may mean longer retrieval
 times.
 
-For JavaScript, extra code also means extra parsing costs. That may be
-offset by JavaScript's optimized code caching, but those may get evicted
-before your content does.
+For JavaScript, extra code also means extra parsing costs. Some
+JavaScript engines cache their parsing products, making processing
+faster in repeat views. But that may not be true for all JS engines and
+all JS content (as some content may not be eligible for caching). There
+are also no guarantees that the cached parsing products won’t get
+evicted before your content does.
 
 <!-- TODO: Make sure that's actually true -->
 
@@ -1641,8 +1645,8 @@ serving resources separately, if any of them is no longer fresh and
 needs updating, they can be downloaded on their own, and all the rest can be retrieved from cache.
 But once we've bundled resources, each small change in each one
 of the files means that all of them must be downloaded again. Even
-worse, for JavaScript, it means that the optimized compiled code that
-the browser created for that file is no longer valid, and the browser
+worse, for JavaScript, it means that the whatever parsing products that
+the browser created and cached for that file is no longer valid, and the browser
 has to create it again, spending precious user CPU time on that.
 
 The current advice today for developers is to find the right trade-off
@@ -1823,19 +1827,24 @@ fonts to the minimal subset you need.
 # Contention avoidance
 We talked earlier about resource priorities and the way that browsers
 handle priorities in HTTP/2 by sending the requests to the server, and
-letting it send the high priority resources first.
-However, there's one big problem in that scheme: on the web today, there
-is no single server. Most sites are served from a multitude of servers, as
-the origin is built out of multiple different hosts, static resources
-served from the S3 or some other static hosting provider and 3rd parties
-are served from entirely different services.
+letting it send the high priority resources first. However, there’s one
+big problem in that scheme: on the web today, **there is no single
+server**. Most sites are served from a multitude of servers, as
+different first-party resources are often served from different hosts
+(e.g. static files served from static hosting providers, images served
+from an image optimization service, etc).  On top of that, 3rd party
+resources are served from servers outside of the publisher’s control.
 
-That means that every discovered request is being sent out to *a*
-server. That server has to deal with a very small number of requests, so
-it prioritizes that request in the context of all the requests that it
-is getting on that connection. In many cases, that request is all alone
-in the queue, so even if it is a low priority request, it is the highest
-priority on the connection!
+Each of these servers has no visibility into the other resources
+downloaded from other hosts, and therefore cannot take them into account
+when considering resource priorities, as it can only prioritize the
+resources that it is sending the user.
+
+In practice, that often means that every server handles only a handful
+of resources, in many cases of similar priority. So the server
+frequently find itself with a low-priority resource at the top of the
+priority queue, and therefore sends it to the user, as it is the highest
+priority resource on the connection!
 
 That often leads to bandwidth contention between critical resources on
 the page and less-critical ones that are served from different hosts.
@@ -1884,10 +1893,16 @@ share a single connection and properly prioritize the content on it.
 It enables the navigation connection to declare its authoritativeness
 over the other connections used on the site.
 
-In some cases, doing so is easy (e.g. sharded domains that all point to
-the same set of servers). In other cases, that can be harder and the
-origin will need to proxy those connections to their actual origins, or
-rely on a CDN service to do that for it.
+The way the connection would prove authoritativeness over other hosts is
+by letting the browser know that it holds the private keys for their
+certificates. That process is, in a sense, similar to a TLS handshake,
+but is performed on the same initial connection. After the server has
+proved it can handle requests for those other hosts, the browser can
+simply send those requests on that same connection, avoiding connection
+establishment and slow-start overhead, and most of all, avoid bandwidth
+contention, as the server can handle the priorities of requests from
+different hosts on a single connection, and as part of a single priority
+queue.
 
 ## Delayed requests
 Another potential solution to the bandwidth contention problem is to
@@ -2060,6 +2075,7 @@ the origin enables you to avoid spurious server side processing,
 reducing both your server-side "think time" as well as your CPU
 requirements on the server. Caching at the edge enables you to offload
 content from your origin, again serving it faster and cheaper.
+
 Finally, caching at the browser enables repeat visitors to your site to
 download less content, and provides them with a significantly faster and
 cheaper experience.
@@ -2072,6 +2088,7 @@ reference to once the content changes, should be considered immutable.
 You can achieve that by have a content-addressable URL, so a URL which contains either a hash or a version of the content itself, and which changes by your build system once the content changed.
 You would also need to annotate the content with something like the following headers:
 `Cache-Control: public, immutable, max-age=315360000`.
+
 That would tell the cache server or the browser that the content will
 never change (or tell them that the content will not change in the next
 10 years, if they don't support the `immutable` keyword).
@@ -2079,13 +2096,16 @@ It would enable them to avoid content revalidation for it, and know that
 if it's in the cache and needed by the page, it can be served as is.
 
 ### Always fresh
-Any content which users go to directly (which is usually your HTML
-pages) should have a permanent URL, and therefore cannot be immutable.
+Any content which users navigate to directly through direct links or the
+URL bar (which is usually your HTML
+pages) should have a permanent URL, which does not change if the content
+does. Therefore we cannot declare such content to be immutable, as it
+will be impossible to modify it if we found an error in the page, a bug
+or a typo.
+
 You could argue that such content can be cacheable for relatively short
 times (e.g. hours). Unfortunately, that would make it very hard for you
-to change the content within that time window if you run into a bug
-with it, a typo, or want to initiate any other kind of unpredicted
-change.
+to change the content within that time window if you need to ship unpredicted changes.
 As such, the safest choice, is to make sure the content gets
 re-validation with the server every single time. You can do that by
 using headers such as:
@@ -2097,15 +2117,22 @@ edge caches from offloading the content from your origin. That means
 that if the cache gets hit with 1000 requests per second, it needs to
 relay those 1000 requests to the origin server, not providing much
 benefit as a cache to that type of content.
+
 A different approach is to provide a very short caching lifetime to your
 public HTML content, giving just enough freshness to enable caches to offload
 your origin. That can be achieved with something like `Cache-Control: public,
 max-age=5`.
+
 That will make sure your content is publicly cacheable for 5 seconds,
 and gets revalidated at the origin after that. So if your cache server
 gets hit with 1000 requests per second, only one request in 5000 will
 get revalidated at the origin, providing significant offload and time
 savings benefits.
+
+Alternatively, you can use caching directives specific to shared caches,
+such as `s-maxage` in order to make sure the content is cached in shared
+caches for short periods of time, but will not be cached in the user's
+browser cache.
 
 ### Hold-till-told
 Another approach that is currently only feasible for origin or edge
@@ -2239,6 +2266,9 @@ you can restrict what content they can download and where they can
 download it from using Content-Security-Policy.
 Including CSP directives can help you make sure that e.g. image-based
 ads don't turn into video and audio ads without your permission.
+At the same time, you should note that CSP doesn’t yet allow you to
+control what the iframes that load in your page are doing, so it cannot
+be used to enforce restrictions on e.g. ads loaded inside iframes.
 
 ## Service Worker
 We talked about Service Workers in the context of caching and offline
