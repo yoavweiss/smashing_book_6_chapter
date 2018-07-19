@@ -38,15 +38,16 @@ does not get in the way of your user's experience.
 * Measurement - Making sure that all the above conditions are in fact true
 and perform as expected.
 
-This chapter will explore ways to make sure these conditions are
-maintained when loading and executing content on the web. These
+This chapter will explore strategies for satisfying these conditions
+in order to avoid unnecessary delays when delivering assets on
+the web. These
 conditions may require changes in the way browsers load web
 content. However, they cannot rely solely on that. In order for some of
-these conditions to be met, web content must also be changed.
+these conditions to be met, web content must also be adjusted.
 
-At the same time, we will not cover all the above conditions. Specifically, the chapter
-will focus on resource loading and will leave CPU utilization, main-thread blocking
-avoidance and performance measurement to be covered elsewhere.
+At the same time, due to limitations in size, we won’t be able to cover all the above conditions. Specifically, the chapter
+will focus on the ins and outs of resource loading and will leave CPU utilization, main-thread blocking
+avoidance and performance measurement aside.
 
 But before we dive into the details of the difference resource loading
 phases and how they can be improved, let’s take a short detour to
@@ -244,11 +245,16 @@ let’s take a look at the different conditions required to make that
 loading as fast as possible.
 
 # Early Delivery
-“Early Delivery” means that useful and relevant content starts to be sent
-down to the browser shortly after the browser sent out a request for
+
+When it comes to web performance, our goal is usually seemingly obvious:
+we want _meaningful_ content to be accessible as fast as possible. As a
+part of it, we need resources that are part of the critical path to be delivered early.
+
+ How early is early enough? Probably shortly after the browser sent out a request for
 it, typically after the user clicked on a link or typed something in
 their URL bar. (or even before that, if the application can have high
-enough confidence that they would)
+enough confidence that they would — e.g. when the user moves their mouse pointer within
+a certain proximity of a button)
 
 ## Protocol overhead
 Network protocols introduce overhead to network communication. That
@@ -294,11 +300,10 @@ out of the way sooner, so that they don't get in the way of your site's
 critical rendering path.
 
 ### Adaptive congestion window
-Another form of protocol overhead is Slow Start.
 When the server starts sending data to the user, it doesn't know how much bandwidth it will have for that purpose. It can't be sure what
 amount of data will overwhelm the network and cause congestion. Since
-the implications of congestion can be severe, the slow start mechanism was developed in order to make sure it does not happen.
-TCP slow start is a mechanism that enables the server to gradually discover the connection's limits, by starting to send a small amount of packets, and increasing that exponentially.
+the implications of congestion can be severe, a mechanism called _Slow Start_ was developed in order to make sure it does not happen.
+It enables the server to gradually discover the connection's limits, by starting to send a small amount of packets, and increasing that exponentially.
 But due to its nature, slow start also limits us in the amount of data that we can initially send on a new connection.
 
 <aside>
@@ -355,12 +360,14 @@ regarding the quality of the network it's on. It can do that based on
 the network radio type, signal strength, as well as past browsing
 sessions on that network.
 
-Browsers already expose network information to JavaScript, and there's work underway
+Browsers already expose network information to JavaScript through the [Network Information API][netinfo], and there's work underway
 to expose the same information using Client-Hints. That will enable
 servers to modify their initial congestion window based on the [Effective
 Connection Type][ect] and adapt it according to the browser's estimate.
 That would help to significantly minimize the time it takes the
 connection to converge onto its final congestion window value.
+
+[netinfo]: https://wicg.github.io/netinfo/
 
 The advent of QUIC as the transport protocol will also make this easier
 to implement on the server, as there's no easy way to increase the
@@ -385,8 +392,9 @@ advantage of them once they become available can be beneficial.
 Alternatively, it is easier to turn on preconnect for your critical third party hosts,
 by adding `<link rel=preconnect href=example.com>` to your markup. One
 caveat here is that preconnects are cheap, but not free. Some browsers
-have a limited number of DNS requests that can be up in the air, and
-preconnecting to non-critical hosts can use up your quota, and prevent
+have a limited number of DNS requests that can be up in the air (e.g.
+Chrome limits pending DNS requests to 6).
+Preconnecting to non-critical hosts can use up your quota, and prevent
 connections to other hosts from taking place. So only preconnect to
 hosts your browser would need to preconnect to, and prefer to do that
 roughly in the same order as the browser would use those connections.
@@ -477,7 +485,7 @@ the default.
 
 ### Server Push
 Another way to work around slow server-side processing is the use an
-HTTP/2 (or H2, for short) mechanism called Server Push in order to load critical resources
+HTTP/2 (or H2, for short) mechanism called _Server Push_ in order to load critical resources
 while the HTML is being generated.
 
 That often means that by the time the HTML was generated and started to
@@ -676,7 +684,7 @@ assumption doesn't necessarily hold.
 
 If we consider HTML, its first few bytes which contain the `<head>`,
 enable the document to be committed and the critical resources to be
-requested is of the highest priority. At the same time, especially for
+requested are of the highest priority. At the same time, especially for
 long HTML files which go beyond the initial viewport, the last few bytes
 which are required to finish constructing the DOM, but are not required
 for the initial rendering, are of lower priority.
@@ -1893,7 +1901,7 @@ share a single connection and properly prioritize the content on it.
 It enables the navigation connection to declare its authoritativeness
 over the other connections used on the site.
 
-The way the connection would prove authoritativeness over other hosts is
+A connection would prove authoritativeness over other hosts
 by letting the browser know that it holds the private keys for their
 certificates. That process is, in a sense, similar to a TLS handshake,
 but is performed on the same initial connection. After the server has
@@ -1986,12 +1994,12 @@ first party, and can hitch a ride on the existing first-party H2
 connection, and not contend on bandwidth with your own resources.
 Unfortunately, you have to be pretty sure these resources are public, static and
 not personalized in any way. From a security perspective, these
-resources can now be inspected by code running on your site, which can
-result in security issues.
-Another aspect is that if that resources depend on cookies in any way,
-these cookies will be lost when rewriting the URLs.
+resources can now be inspected by code running on your site, so you need
+to make sure these third party resources are public resources, to avoid
+any security issues.
 
-<!-- TODO: Make sure this is not enabling a security issue -->
+Another reason to make sure these resources are public is that if that resources depend on cookies in any way,
+these cookies will be lost when rewriting the URLs.
 
 ### Delay requesting of non-critical third parties.
 
