@@ -315,8 +315,8 @@ advantage of them once they become available can be beneficial.</p>
 by adding <code>&lt;link rel=preconnect href=example.com&gt;</code> to your markup. One
 caveat here is that preconnects are cheap, but not free. Some browsers
 have a limited number of DNS requests that can be up in the air (e.g.
-Chrome limits pending DNS requests to 6).
-Preconnecting to non-critical hosts can use up your quota, and prevent
+Chrome limits pending DNS requests to 6).</p>
+<p>Preconnecting to non-critical hosts can use up your quota, and prevent
 connections to other hosts from taking place. So only preconnect to
 hosts your browser would need to preconnect to, and prefer to do that
 roughly in the same order as the browser would use those connections.</p>
@@ -353,8 +353,8 @@ flushing your HTML content:</p>
 <h4 id="committing-an-http-response-code">Committing an HTTP response code</h4>
 <p>If the eventual response will not be a <code>200 OK</code> one (e.g. a 404 or a 500 error if the
 server failed to find the required info in the database), you would have
-to redirect the content using javascript. Since not all search crawlers
-support javascript, it can mean that such &quot;eventual error&quot; pages can now
+to redirect the content using JavaScript. Since not all search crawlers
+support JavaScript, it can mean that such &quot;eventual error&quot; pages can now
 find themselves in search results. It also means we need to bake that &quot;eventual error&quot; logic into our
 client side application logic, in order to make sure the negative user impact of
 that redirection is as unnoticeable as it can be.</p>
@@ -906,7 +906,7 @@ run until some milestone is hit (e.g. first paint happened)</li>
         var scriptPreloaded = false;
         var addScriptElement = () =&gt; {
             var script = document.createElement(&quot;script&quot;);
-            script.src = &quot;non-blocking.js&quot;;
+            script.src = &quot;non-critical.js&quot;;
             document.body.appendChild(script);
         };
         var preloadOnloadHandler = () =&gt; {
@@ -926,9 +926,7 @@ run until some milestone is hit (e.g. first paint happened)</li>
             window.addEventListener(&quot;DOMContentLoaded&quot;, addScriptElement);
         }
     &lt;/script&gt;
-    &lt;link rel=&quot;preload&quot; as=&quot;script&quot; href=&quot;non-critical.js&quot; onload=&quot;preloadOnloadHandler&quot;&gt;</code></pre><!-- TODO: test that this actually works -->
-
-<h4 id="missing-high-level-feature">Missing high level feature</h4>
+    &lt;link rel=&quot;preload&quot; as=&quot;script&quot; href=&quot;non-critical.js&quot; onload=&quot;preloadOnloadHandler&quot;&gt;</code></pre><h4 id="missing-high-level-feature">Missing high level feature</h4>
 <p>Similarly to CSS, preload gives us the platform primitives that enable
 us to load script decoupled from their execution. But for CSS, we can
 also now include styles in the body, and expect them to Just Work&trade;
@@ -988,7 +986,6 @@ stack something to do while the user&#39;s CPU is churning away executing
 JavaScript.</p>
 <p>You can also consider switching to a lighter-weight version of your
 framework. Many popular frameworks have a lighter alternative, which is
-mostly compatible (so your could easily switch your content to it),
 while being faster. There are of-course some trade-offs to be had there,
 as that lighter weight may come at a cost to functionality you rely on.
 But in many cases, it just sheds off features you don&#39;t even use,
@@ -996,7 +993,7 @@ resulting in faster experience at no particular cost. </p>
 <p>Eventually, consider rewriting the major landing pages for your
 application, so that users can get them rendered and working relatively
 fast, and then use them to &quot;bootstrap&quot; the rest of your app.</p>
-<!-- TODO: pass that through someone that knows these things better -->
+<!-- TODO: passing that through Andy and Kadlec -->
 
 <h2 id="image-lazy-loading">Image lazy loading</h2>
 <p>Images often comprise a large chunk of the page&#39;s downloaded bytes. At
@@ -1861,7 +1858,55 @@ parties further than you restrict the main context.</p>
 to do in an optimal way. But, it&#39;s getting better. And browsers are
 heavily investing in improving it significantly.</p>
 <h2 id="what-to-do-">What to do?</h2>
-<p>TODO: Sum up a list of all actions devs need to take from throughout the book</p>
+<p>We went through many different subjects throughout the chapter, so it&#39;s
+easy to lose track of what&#39;s is theoretical and what is actionable.</p>
+<p>Below is a check-list you can go over to refresh your memory, and find
+things to focus on to improve your site&#39;s performance:</p>
+<ul>
+<li>Preconnect - Use preconnect to prevent connection establishment from
+blocking your critical path</li>
+<li>TFO + TLS/1.3 or QUIC - Use cutting edge protocol stacks if you can to
+reduce protocol overhead</li>
+<li>Server Push - use H2 server push to ensure early delivery of your
+critical resources on first views.</li>
+<li>Progressive CSS loading - Load styles for your out-of-viewport content
+at the point where they are needed.</li>
+<li>Non-blocking JS loading - Make sure that your JS is loaded in a
+non-blocking manner.</li>
+<li>Avoid JS reliant experience - Prefer your user&#39;s experience over your
+own and use a small amount of non-blocking JS to avoid bogging down
+your users&#39; CPU.</li>
+<li>Lazy load images - Use one of the various lazy loading libraries
+(preferably one that uses IntersectionObservers) to lazy load your
+out-of-viewport images.</li>
+<li>Use smart font loading strategies - Prefer FOUT and use <code>font-display: swap</code> or the Font Loading API to achieve it.</li>
+<li>Use preload to make sure your resources are early discovered by the
+browser.</li>
+<li>Avoid sending unused code - use code coverage tools to remove dead
+code from your JS and CSS bundles.</li>
+<li>Brotli - Use brotli compression to significantly reduce the size of your static
+JS/CSS files.</li>
+<li>Use Responsive images and Client Hints to make sure you&#39;re not sending
+unnecessary image data.</li>
+<li>Subset you fonts to avoid sending unused character data.</li>
+<li>Avoid bandwidth contention between your resources<ul>
+<li>Rewrite static third party files to your domain</li>
+<li>Dynamically delay requests for non-critical third parties.</li>
+<li>Use credentialed fetches whenever possible</li>
+<li>Coalesce connections using the certificate&#39;s SAN and mapping hosts
+to the same IP</li>
+</ul>
+</li>
+<li>Minimize latency<ul>
+<li>Use caching headers to make sure your resources are properly
+cached in the browser and on intermediary caches</li>
+<li>Use a CDN to reduce latency between the user and the nearest
+server</li>
+<li>Service Workers can make browser caching more predictable</li>
+</ul>
+</li>
+<li>Reduce impact of third party resources - iframe and lazy load 3rd parties whenever possible.</li>
+</ul>
 <h2 id="what-s-in-the-future-">What&#39;s in the future?</h2>
 <p>To wrap up the
 chapter with an optimistic view, here&#39;s where I want loading resources

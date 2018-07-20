@@ -394,6 +394,7 @@ by adding `<link rel=preconnect href=example.com>` to your markup. One
 caveat here is that preconnects are cheap, but not free. Some browsers
 have a limited number of DNS requests that can be up in the air (e.g.
 Chrome limits pending DNS requests to 6).
+
 Preconnecting to non-critical hosts can use up your quota, and prevent
 connections to other hosts from taking place. So only preconnect to
 hosts your browser would need to preconnect to, and prefer to do that
@@ -439,8 +440,8 @@ flushing your HTML content:
 
 If the eventual response will not be a `200 OK` one (e.g. a 404 or a 500 error if the
 server failed to find the required info in the database), you would have
-to redirect the content using javascript. Since not all search crawlers
-support javascript, it can mean that such "eventual error" pages can now
+to redirect the content using JavaScript. Since not all search crawlers
+support JavaScript, it can mean that such "eventual error" pages can now
 find themselves in search results. It also means we need to bake that "eventual error" logic into our
 client side application logic, in order to make sure the negative user impact of
 that redirection is as unnoticeable as it can be.
@@ -1122,7 +1123,7 @@ A simple version of this, mixing both preload and RAF, may look something like t
         var scriptPreloaded = false;
         var addScriptElement = () => {
             var script = document.createElement("script");
-            script.src = "non-blocking.js";
+            script.src = "non-critical.js";
             document.body.appendChild(script);
         };
         var preloadOnloadHandler = () => {
@@ -1144,8 +1145,6 @@ A simple version of this, mixing both preload and RAF, may look something like t
     </script>
     <link rel="preload" as="script" href="non-critical.js" onload="preloadOnloadHandler">
 ```
-
-<!-- TODO: test that this actually works -->
 
 #### Missing high level feature
 Similarly to CSS, preload gives us the platform primitives that enable
@@ -1225,7 +1224,6 @@ JavaScript.
 
 You can also consider switching to a lighter-weight version of your
 framework. Many popular frameworks have a lighter alternative, which is
-mostly compatible (so your could easily switch your content to it),
 while being faster. There are of-course some trade-offs to be had there,
 as that lighter weight may come at a cost to functionality you rely on.
 But in many cases, it just sheds off features you don't even use,
@@ -1235,7 +1233,7 @@ Eventually, consider rewriting the major landing pages for your
 application, so that users can get them rendered and working relatively
 fast, and then use them to "bootstrap" the rest of your app.
 
-<!-- TODO: pass that through someone that knows these things better -->
+<!-- TODO: passing that through Andy and Kadlec -->
 
 ## Image lazy loading
 Images often comprise a large chunk of the page's downloaded bytes. At
@@ -2326,7 +2324,51 @@ heavily investing in improving it significantly.
 
 ## What to do?
 
-TODO: Sum up a list of all actions devs need to take from throughout the book
+We went through many different subjects throughout the chapter, so it's
+easy to lose track of what's is theoretical and what is actionable.
+
+Below is a check-list you can go over to refresh your memory, and find
+things to focus on to improve your site's performance:
+
+* Preconnect - Use preconnect to prevent connection establishment from
+  blocking your critical path
+* TFO + TLS/1.3 or QUIC - Use cutting edge protocol stacks if you can to
+  reduce protocol overhead
+* Server Push - use H2 server push to ensure early delivery of your
+  critical resources on first views.
+* Progressive CSS loading - Load styles for your out-of-viewport content
+  at the point where they are needed.
+* Non-blocking JS loading - Make sure that your JS is loaded in a
+  non-blocking manner.
+* Avoid JS reliant experience - Prefer your user's experience over your
+  own and use a small amount of non-blocking JS to avoid bogging down
+your users' CPU.
+* Lazy load images - Use one of the various lazy loading libraries
+  (preferably one that uses IntersectionObservers) to lazy load your
+out-of-viewport images.
+* Use smart font loading strategies - Prefer FOUT and use `font-display: swap` or the Font Loading API to achieve it.
+* Use preload to make sure your resources are early discovered by the
+  browser.
+* Avoid sending unused code - use code coverage tools to remove dead
+  code from your JS and CSS bundles.
+* Brotli - Use brotli compression to significantly reduce the size of your static
+  JS/CSS files.
+* Use Responsive images and Client Hints to make sure you're not sending
+  unnecessary image data.
+* Subset you fonts to avoid sending unused character data.
+* Avoid bandwidth contention between your resources
+   - Rewrite static third party files to your domain
+   - Dynamically delay requests for non-critical third parties.
+   - Use credentialed fetches whenever possible
+   - Coalesce connections using the certificate's SAN and mapping hosts
+     to the same IP
+* Minimize latency
+    - Use caching headers to make sure your resources are properly
+      cached in the browser and on intermediary caches
+    - Use a CDN to reduce latency between the user and the nearest
+      server
+    - Service Workers can make browser caching more predictable
+* Reduce impact of third party resources - iframe and lazy load 3rd parties whenever possible.
 
 ## What's in the future?
 To wrap up the
