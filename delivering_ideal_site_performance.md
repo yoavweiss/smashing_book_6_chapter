@@ -1029,7 +1029,7 @@ guarantees that they'd run right before DOMContentLoaded and in order)
 <!-- TODO: make sure that Firefox is really not doing anything smart here -->
 
 <aside>
-Using `<script defer>` only became a realistic option in the last few
+Using `&lt;script defer>` only became a realistic option in the last few
 years.
 IE9 and below had a fatal issue with it, causing content that uses defer
 to be [racily broken][ie9_defer], if the scripts actually have
@@ -1357,10 +1357,12 @@ behavior regarding font loading and modify it to match your preferences:
 If you can live with the Flash of Unstyled Text (FOUT), where the
 fallback fonts are rendered first, and then replaced by the loaded fonts
 once they arrive, `font-display: swap` is probably the way to go.
+
 Alternatively, `font-display: fallback` enables you to make sure that
-switch from fallback font to loaded font won’t happen too late in the
-page, and guarantees that it will only happen within the first 3 seconds
+a switch from fallback font to loaded font won’t happen too late in the
+page load, and guarantees that if such a switch happens, it will only happen within the first 3 seconds
 of the font loading.
+
 If you can’t live with FOUT, `font-display: optional` makes sure that
 the loaded fonts are displayed only when they are immediately available
 to the browser (e.g. when they are cached from a previous session).
@@ -1545,10 +1547,15 @@ times.
 
 For JavaScript, extra code also means extra parsing costs. Some
 JavaScript engines cache their parsing products, making processing
-faster in repeat views. But that may not be true for all JS engines and
+faster in repeat views. For example, V8 uses [code
+caching][code_caching] to make sure
+JS bytecode can be reused in repeat views, reducing parsing costs there. 
+But that may not be true for all JS engines and
 all JS content (as some content may not be eligible for caching). There
 are also no guarantees that the cached parsing products won’t get
 evicted before your content does.
+
+[code_caching]: https://v8project.blogspot.com/2018/04/improved-code-caching.html
 
 <!-- TODO: Make sure that's actually true -->
 
@@ -1818,8 +1825,9 @@ supports.
 
 ## Font subsetting
 Web fonts is another type of content where you can send your users
-excessive data. Fonts often contain full set of characters of
-non-English languages, which may or may not be relevant for your
+excessive data. Fonts often contain full set of characters which fall
+outside of the basic Latin Unicode block (typically used in
+non-English languages), which may or may not be relevant for your
 content. These extra characters can add up, and if you're not using
 them, it might be best to drop them from the downloaded font entirely.
 At the same time, it's tricky to assume you what you will and will not
@@ -1828,9 +1836,10 @@ be casually added to your site by content creators (or your users - for
 user generated content) after you have subsetted the fonts.
 
 In cases where you can make assumptions about the content at build time,
-there are tools (e.g. [subfont][subfont]) which can help you subset your
+there are tools (e.g. [subfont][subfont] or [glyphhanger][glyphhanger]) which can help you subset your
 fonts to the minimal subset you need.
 [subfont]: https://www.npmjs.com/package/subfont
+[glyphhanger]: https://github.com/filamentgroup/glyphhanger
 
 # Contention avoidance
 We talked earlier about resource priorities and the way that browsers
@@ -2306,8 +2315,6 @@ loaded images and their compression ratios, and more. Feature policies
 are inherited by iframes so the same restriction will apply to them as
 well. You can also define iframe specific feature policies, so you can restrict your iframed third
 parties further than you restrict the main context.
-
-<!-- TODO: do we need a full list of features? -->
 
 [featurepolicy]: https://wicg.github.io/feature-policy/
 
