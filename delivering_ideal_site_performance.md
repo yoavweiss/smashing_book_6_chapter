@@ -288,6 +288,7 @@ will take more than a single RTT to be established, but generally, using those c
 will mean that there are very few RTTs which get in the way of content delivered to our users.
 
 <aside>
+
 #### QUIC - Quick UDP Internet Connection
 
 HTTP/2 as a protocol brought many necessary improvements to resource
