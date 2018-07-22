@@ -1211,23 +1211,34 @@ pointing out the site's Time to Interactive metrics, among others.
 [audit]: https://www.webpagetest.org/lighthouse
 
 #### But I already do rely on JS. What do I do?
-In case you're already relying on JS on your existing site, look into
+In case you already rely on JS for your existing site, look into
 server side rendering solutions. If they exist for your framework, they
-will help speed up your initial rendering, even if they can't always
+will help speed up your initial rendering. Unfortunately SSR solutions can't always
 help your site's interactivity, if they weren't designed with that in
-mind.
+mind. That is because they often involve “hydrating” the DOM - attaching
+event listeners and binding data structures to it, which can require
+significant processing.
 
 If there's no server-side rendering solution for your case, `<link rel=preload>` can help you overcome the fact that your site
 is sidestepping the browser's preloader, and give your browser's network
 stack something to do while the user's CPU is churning away executing
-JavaScript.
+JavaScript. Because Priority Hints are not yet widely implemented, you
+need to make sure these preload links are either included in the HTML
+after more critical resources, or added to it dynamically after first
+paint.
 
-You can also consider switching to a lighter-weight version of your
+You may be able to switch to a lighter-weight version of your
 framework. Many popular frameworks have a lighter alternative, which is
 while being faster. There are of-course some trade-offs to be had there,
 as that lighter weight may come at a cost to functionality you rely on.
 But in many cases, it just sheds off features you don't even use,
 resulting in faster experience at no particular cost. 
+
+Another way to make your JS reliant app faster is to use intelligent
+bundling solutions like WebPack, Rollup or Parcel to code-split your
+application into route-specific bundles, and only load upfront the code
+you need for your current route. Then you can use prefetch to download
+future routes as lower priority resources
 
 Eventually, consider rewriting the major landing pages for your
 application, so that users can get them rendered and working relatively
@@ -2327,35 +2338,27 @@ heavily investing in improving it significantly.
 We went through many different subjects throughout the chapter, so it's
 easy to lose track of what's is theoretical and what is actionable.
 
-Below is a check-list you can go over to refresh your memory, and find
+Below is a checklist you can go over to refresh your memory, and find
 things to focus on to improve your site's performance:
 
-* Preconnect - Use preconnect to prevent connection establishment from
-  blocking your critical path
-* TFO + TLS/1.3 or QUIC - Use cutting edge protocol stacks if you can to
-  reduce protocol overhead
-* Server Push - use H2 server push to ensure early delivery of your
-  critical resources on first views.
-* Progressive CSS loading - Load styles for your out-of-viewport content
-  at the point where they are needed.
-* Non-blocking JS loading - Make sure that your JS is loaded in a
-  non-blocking manner.
-* Avoid JS reliant experience - Prefer your user's experience over your
-  own and use a small amount of non-blocking JS to avoid bogging down
-your users' CPU.
-* Lazy load images - Use one of the various lazy loading libraries
-  (preferably one that uses IntersectionObservers) to lazy load your
-out-of-viewport images.
-* Use smart font loading strategies - Prefer FOUT and use `font-display: swap` or the Font Loading API to achieve it.
-* Use preload to make sure your resources are early discovered by the
-  browser.
-* Avoid sending unused code - use code coverage tools to remove dead
-  code from your JS and CSS bundles.
-* Brotli - Use brotli compression to significantly reduce the size of your static
-  JS/CSS files.
-* Use Responsive images and Client Hints to make sure you're not sending
-  unnecessary image data.
-* Subset you fonts to avoid sending unused character data.
+* Reduce protocol overhead
+    - Preconnect - Use preconnect to prevent connection establishment from blocking your critical path
+    - TFO + TLS/1.3 or QUIC - Use cutting edge protocol stacks if you can to reduce protocol overhead
+* Early delivery and discovery
+    - Server Push - use H2 server push to ensure early delivery of your critical resources on first views.
+    - Preload - make sure your resources are early discovered by the browser.
+* Load code *when* you need it
+    - Progressive CSS loading - Load styles for your out-of-viewport content at the point where they are needed.
+    - Non-blocking JS loading - Make sure that your JS is loaded in a non-blocking manner.
+    your users' CPU.
+    - Lazy load images - Use one of the various lazy loading libraries (preferably one that uses IntersectionObservers) to lazy load your out-of-viewport images.
+    - Use smart font loading strategies - Prefer FOUT and use `font-display: swap` or the Font Loading API to achieve it.
+* Load less
+    - Avoid sending unused code - use code coverage tools to remove dead code from your JS and CSS bundles.
+    - Avoid JS reliant experience - Prefer your user's experience over your own and use a small amount of non-blocking JS to avoid bogging down
+    - Brotli - Use brotli compression to significantly reduce the size of your static JS/CSS files.
+    - Use Responsive images and Client Hints to make sure you're not sending unnecessary image data.
+    - Subset you fonts to avoid sending unused character data.
 * Avoid bandwidth contention between your resources
    - Rewrite static third party files to your domain
    - Dynamically delay requests for non-critical third parties.
@@ -2368,7 +2371,8 @@ out-of-viewport images.
     - Use a CDN to reduce latency between the user and the nearest
       server
     - Service Workers can make browser caching more predictable
-* Reduce impact of third party resources - iframe and lazy load 3rd parties whenever possible.
+* Reduce impact of third party resources
+    - iframe and lazy load 3rd parties whenever possible
 
 ## What's in the future?
 To wrap up the

@@ -975,21 +975,31 @@ you should avoid that framework.</p>
 could also run a <a href="https://developers.google.com/web/tools/lighthouse/">lighthouse</a> <a href="https://www.webpagetest.org/lighthouse">audit</a> of those sites,
 pointing out the site&#39;s Time to Interactive metrics, among others.</p>
 <h4 id="but-i-already-do-rely-on-js-what-do-i-do-">But I already do rely on JS. What do I do?</h4>
-<p>In case you&#39;re already relying on JS on your existing site, look into
+<p>In case you already rely on JS for your existing site, look into
 server side rendering solutions. If they exist for your framework, they
-will help speed up your initial rendering, even if they can&#39;t always
+will help speed up your initial rendering. Unfortunately SSR solutions can&#39;t always
 help your site&#39;s interactivity, if they weren&#39;t designed with that in
-mind.</p>
+mind. That is because they often involve “hydrating” the DOM - attaching
+event listeners and binding data structures to it, which can require
+significant processing.</p>
 <p>If there&#39;s no server-side rendering solution for your case, <code>&lt;link rel=preload&gt;</code> can help you overcome the fact that your site
 is sidestepping the browser&#39;s preloader, and give your browser&#39;s network
 stack something to do while the user&#39;s CPU is churning away executing
-JavaScript.</p>
-<p>You can also consider switching to a lighter-weight version of your
+JavaScript. Because Priority Hints are not yet widely implemented, you
+need to make sure these preload links are either included in the HTML
+after more critical resources, or added to it dynamically after first
+paint.</p>
+<p>You may be able to switch to a lighter-weight version of your
 framework. Many popular frameworks have a lighter alternative, which is
 while being faster. There are of-course some trade-offs to be had there,
 as that lighter weight may come at a cost to functionality you rely on.
 But in many cases, it just sheds off features you don&#39;t even use,
 resulting in faster experience at no particular cost. </p>
+<p>Another way to make your JS reliant app faster is to use intelligent
+bundling solutions like WebPack, Rollup or Parcel to code-split your
+application into route-specific bundles, and only load upfront the code
+you need for your current route. Then you can use prefetch to download
+future routes as lower priority resources</p>
 <p>Eventually, consider rewriting the major landing pages for your
 application, so that users can get them rendered and working relatively
 fast, and then use them to &quot;bootstrap&quot; the rest of your app.</p>
@@ -1860,35 +1870,35 @@ heavily investing in improving it significantly.</p>
 <h2 id="what-to-do-">What to do?</h2>
 <p>We went through many different subjects throughout the chapter, so it&#39;s
 easy to lose track of what&#39;s is theoretical and what is actionable.</p>
-<p>Below is a check-list you can go over to refresh your memory, and find
+<p>Below is a checklist you can go over to refresh your memory, and find
 things to focus on to improve your site&#39;s performance:</p>
 <ul>
-<li>Preconnect - Use preconnect to prevent connection establishment from
-blocking your critical path</li>
-<li>TFO + TLS/1.3 or QUIC - Use cutting edge protocol stacks if you can to
-reduce protocol overhead</li>
-<li>Server Push - use H2 server push to ensure early delivery of your
-critical resources on first views.</li>
-<li>Progressive CSS loading - Load styles for your out-of-viewport content
-at the point where they are needed.</li>
-<li>Non-blocking JS loading - Make sure that your JS is loaded in a
-non-blocking manner.</li>
-<li>Avoid JS reliant experience - Prefer your user&#39;s experience over your
-own and use a small amount of non-blocking JS to avoid bogging down
+<li>Reduce protocol overhead<ul>
+<li>Preconnect - Use preconnect to prevent connection establishment from blocking your critical path</li>
+<li>TFO + TLS/1.3 or QUIC - Use cutting edge protocol stacks if you can to reduce protocol overhead</li>
+</ul>
+</li>
+<li>Early delivery and discovery<ul>
+<li>Server Push - use H2 server push to ensure early delivery of your critical resources on first views.</li>
+<li>Preload - make sure your resources are early discovered by the browser.</li>
+</ul>
+</li>
+<li>Load code <em>when</em> you need it<ul>
+<li>Progressive CSS loading - Load styles for your out-of-viewport content at the point where they are needed.</li>
+<li>Non-blocking JS loading - Make sure that your JS is loaded in a non-blocking manner.
 your users&#39; CPU.</li>
-<li>Lazy load images - Use one of the various lazy loading libraries
-(preferably one that uses IntersectionObservers) to lazy load your
-out-of-viewport images.</li>
+<li>Lazy load images - Use one of the various lazy loading libraries (preferably one that uses IntersectionObservers) to lazy load your out-of-viewport images.</li>
 <li>Use smart font loading strategies - Prefer FOUT and use <code>font-display: swap</code> or the Font Loading API to achieve it.</li>
-<li>Use preload to make sure your resources are early discovered by the
-browser.</li>
-<li>Avoid sending unused code - use code coverage tools to remove dead
-code from your JS and CSS bundles.</li>
-<li>Brotli - Use brotli compression to significantly reduce the size of your static
-JS/CSS files.</li>
-<li>Use Responsive images and Client Hints to make sure you&#39;re not sending
-unnecessary image data.</li>
+</ul>
+</li>
+<li>Load less<ul>
+<li>Avoid sending unused code - use code coverage tools to remove dead code from your JS and CSS bundles.</li>
+<li>Avoid JS reliant experience - Prefer your user&#39;s experience over your own and use a small amount of non-blocking JS to avoid bogging down</li>
+<li>Brotli - Use brotli compression to significantly reduce the size of your static JS/CSS files.</li>
+<li>Use Responsive images and Client Hints to make sure you&#39;re not sending unnecessary image data.</li>
 <li>Subset you fonts to avoid sending unused character data.</li>
+</ul>
+</li>
 <li>Avoid bandwidth contention between your resources<ul>
 <li>Rewrite static third party files to your domain</li>
 <li>Dynamically delay requests for non-critical third parties.</li>
@@ -1905,7 +1915,10 @@ server</li>
 <li>Service Workers can make browser caching more predictable</li>
 </ul>
 </li>
-<li>Reduce impact of third party resources - iframe and lazy load 3rd parties whenever possible.</li>
+<li>Reduce impact of third party resources<ul>
+<li>iframe and lazy load 3rd parties whenever possible</li>
+</ul>
+</li>
 </ul>
 <h2 id="what-s-in-the-future-">What&#39;s in the future?</h2>
 <p>To wrap up the
