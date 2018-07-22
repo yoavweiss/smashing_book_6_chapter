@@ -234,6 +234,74 @@ recreated instantaneously.
 There are still many caveats and many scenarios where the connection
 will take more than a single RTT to be established, but generally, using those cutting edge protocols
 will mean that there are very few RTTs which get in the way of content delivered to our users.</p>
+<aside>
+#### QUIC - Quick UDP Internet Connection
+
+<p>HTTP/2 as a protocol brought many necessary improvements to resource
+delivery over HTTP. HTTP/1 before it had a severe head-of-line blocking
+issue, where the browser could have sent in practice only one request at
+a time on a connection. That created a linear connection between the
+number of requests a page had and the number of RTTs it took for the
+page&#39;s resources to be downloaded. As a result, browsers settled on
+opening multiple connections per host (typically 6 connections for
+modern browsers), to reduce the latency by a fixed factor.</p>
+<p>HTTP/2 fixed that by enabling multiplexing of multiple request and
+responses over a single connection, without incurring extra latency
+costs per request. As a result, for HTTP/2 browsers only use a single
+connection per host. But a side effect of that is that HTTP/2 delivery
+is more sensitive to packet losses than HTTP/1, as each packet loss
+impacts <em>all</em> the resources, rather than just one of them.</p>
+<p>As a result, in highly-lossy environments, there are scenarios where
+HTTP/2 ends up being slower than HTTP/1, making the switch to HTTP/2
+tricky for sites that have large chunks of their audience coming in from
+bad networking environments.</p>
+<p>In order to resolve that, Google Chrome folks started exploring ways to
+make the transport layer more aware of HTTP/2&#39;s request-response streams.
+Since TCP is widely deployed and inspected by intermediary network
+components, it&#39;s practically impossible to significantly change the
+protocol without some of those network components breaking that traffic
+in the process. Re-implementing a reliable transport layer over a
+different transport protocol, UDP, was a simpler option.</p>
+<p>The result is QUIC (standing for Quick USP Internet Connections) - a new
+protocol combining the transport, encryption and application layers all
+into a single, coordinated processing model.</p>
+<p>This new protocol have several shiny new improvements over the protocols
+of yore:</p>
+<ul>
+<li>0-RTT - combining layers means that the protocol needs to
+establish a connection once (for both transport and encryption
+layers). On top of that, once a user has established a connection to a
+server once, the client can remember those encryption credentials and
+resume that same connection in the future with 0-RTTs (sending those
+past-credentials along with the request).</li>
+<li>Stream-aware loss handling - Another major advantage of merging the
+layers is in handling of packet losses. Both TCP and QUIC offer
+reliable transport, which means that when a packet is lost, it has to be
+successfully retransmitted before the following packets can be delivered
+to higher layers. However, TCP guarantees reliable delivery for the
+entire connection, while QUIC guarantees reliable delivery <em>per
+request-response stream</em>. That means that if a packet is lost in QUIC,
+it will only delay the impacted resources, while HTTP/2 over TCP will
+delay <em>all resources</em>.</li>
+<li>Tighter prioritization - Because QUIC is implemented over UDP, the
+transport layer logic and queues are all implemented in the server in userland code, rather than in the kernel, where TCP&#39;s logic is implemented.
+As a result, it&#39;s easier for the server to have tighter controls over
+the priorities of the resources that are currently in the sending
+queues. One of the problems with the HTTP/2 over TCP model is that the
+TCP queues are outside of the server&#39;s control. When the server is
+sending down a mix of resources in different priorities, there can be
+situations where the TCP queues already have not-yet-sent lower priority
+resources, which will then delay the high-priority resource from being
+sent. With QUIC, a server implementation can have tighter control over
+the queues and make sure that lower priority resources don&#39;t get in the
+way.</li>
+</ul>
+<p>QUIC is not yet a standard protocol. It is only implemented as part of
+the Chromium project&#39;s network stack, and used as a library by Chromium, Android apps as well as servers.
+At the same time, there are significant efforts at the IETF - the Internet Engineering Task
+Force - to create a standard version of the protocol, so that it can be implemented independently in an interoperable way across multiple browsers and servers.</p>
+</aside>
+
 <h3 id="preconnect">Preconnect</h3>
 <p>Preconnect is browser hint which tells it the page is about to download
 a resource from a certain host, enabling it to connect to it ahead of time.
