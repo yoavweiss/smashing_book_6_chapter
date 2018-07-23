@@ -172,7 +172,7 @@ displayed on screen.
 After that, the browser can proceed to laying out the different elements
 on the screen and eventually paint them.
 
-![](media/critical_path.jpg)
+![](media/critical_path.svg)
 
 ### Request destination and credentials mode
 
@@ -2052,7 +2052,7 @@ these resources need to be processed in their entirety before they can
 be executed, sending the full files would mean we can execute each of
 those files earlier, resulting in faster overall experience.
 
-![](media/parallel_vs_1by1.jpg)
+![](media/parallel_vs_1by1.svg)
 
 However, what if we're talking about resources that are processed in a
 streaming fashion, such as images? In that case, it's probably better to

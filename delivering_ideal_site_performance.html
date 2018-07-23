@@ -144,7 +144,7 @@ tree for each node that actually partake in the page&#39;s rendering and is
 displayed on screen.</p>
 <p>After that, the browser can proceed to laying out the different elements
 on the screen and eventually paint them.</p>
-<p><img src="media/critical_path.jpg" alt=""></p>
+<p><img src="media/critical_path.svg" alt=""></p>
 <h3 id="request-destination-and-credentials-mode">Request destination and credentials mode</h3>
 <p>One important thing to understand about loaded resources in the browser
 is that each request has its own destination as well as credentials
@@ -1652,7 +1652,7 @@ those resources down in 2 different ways:
 these resources need to be processed in their entirety before they can
 be executed, sending the full files would mean we can execute each of
 those files earlier, resulting in faster overall experience.</p>
-<p><img src="media/parallel_vs_1by1.jpg" alt=""></p>
+<p><img src="media/parallel_vs_1by1.svg" alt=""></p>
 <p>However, what if we&#39;re talking about resources that are processed in a
 streaming fashion, such as images? In that case, it&#39;s probably better to
 send down some data for each separate image, and provide the user with
