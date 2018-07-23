@@ -292,15 +292,15 @@ will mean that there are very few RTTs which get in the way of content delivered
 #### QUIC - Quick UDP Internet Connection
 
 HTTP/2 as a protocol brought many necessary improvements to resource
-delivery over HTTP. HTTP/1 before it had a severe head-of-line blocking
+delivery over HTTP. HTTP/1 it had a severe head-of-line blocking
 issue, where the browser could have sent in practice only one request at
-a time on a connection. That created a linear connection between the
+a time on a connection. That created a linear relationship between the
 number of requests a page had and the number of RTTs it took for the
 page's resources to be downloaded. As a result, browsers settled on
 opening multiple connections per host (typically 6 connections for
 modern browsers), to reduce the latency by a fixed factor.
 
-HTTP/2 fixed that by enabling multiplexing of multiple request and
+HTTP/2 fixed that head-of-line blocking issue by enabling multiplexing of multiple request and
 responses over a single connection, without incurring extra latency
 costs per request. As a result, for HTTP/2 browsers only use a single
 connection per host. But a side effect of that is that HTTP/2 delivery
@@ -320,7 +320,7 @@ protocol without some of those network components breaking that traffic
 in the process. Re-implementing a reliable transport layer over a
 different transport protocol, UDP, was a simpler option.
 
-The result is QUIC (standing for Quick USP Internet Connections) - a new
+The result is QUIC (standing for Quick UDP Internet Connections) - a new
 protocol combining the transport, encryption and application layers all
 into a single, coordinated processing model.
 
