@@ -301,15 +301,18 @@ Force (IETF) to create a standard version of the protocol, so it can be implemen
 </aside>
 
 <h3 id="preconnect">Preconnect</h3>
-<p>Preconnect is browser hint which tells it the page is about to download
-a resource from a certain host, enabling it to connect to it ahead of time.
-It is expressed as a <code>rel</code> attribute on a <code>&lt;link&gt;</code> element. For example,
+<p>While 0-RTT protocols enable us to forgo the four typical RTTs it takes
+the browser to establish a connection, preconnect enables us to get them
+out of the browser’s critical path. Preconnect is a markup hint which
+indicates to the browser that resources would be downloaded from a
+certain origin, so the browser would do well to resolve that host’s
+address, and create TCP and TLS connections to it ahead of time, before
+the resource is actually needed.</p>
+<p>Preconnect is expressed as a rel attribute on a <link> element. For
+example, 
 <code>&lt;link rel=preconnect href=&quot;https://www.example.com&quot;&gt;</code> tells the browser
 to create a connection to the host <code>www.example.com</code> even if it hasn’t
 encountered any resources on that host just yet.</p>
-<p>That is another way to get rid of these pesky RTT - just get them
-out of the way sooner, so that they don&#39;t get in the way of your site&#39;s
-critical rendering path.</p>
 <h3 id="adaptive-congestion-window">Adaptive congestion window</h3>
 <p>When the server starts sending data to the user, it doesn&#39;t know how much bandwidth it will have for that purpose. It can&#39;t be sure what
 amount of data will overwhelm the network and cause congestion. Since

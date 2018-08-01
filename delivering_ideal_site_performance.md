@@ -360,16 +360,20 @@ Force (IETF) to create a standard version of the protocol, so it can be implemen
 </aside>
 
 ### Preconnect
-Preconnect is browser hint which tells it the page is about to download
-a resource from a certain host, enabling it to connect to it ahead of time.
-It is expressed as a `rel` attribute on a `<link>` element. For example,
+
+While 0-RTT protocols enable us to forgo the four typical RTTs it takes
+the browser to establish a connection, preconnect enables us to get them
+out of the browser’s critical path. Preconnect is a markup hint which
+indicates to the browser that resources would be downloaded from a
+certain origin, so the browser would do well to resolve that host’s
+address, and create TCP and TLS connections to it ahead of time, before
+the resource is actually needed.
+
+Preconnect is expressed as a rel attribute on a <link> element. For
+example, 
 `<link rel=preconnect href="https://www.example.com">` tells the browser
 to create a connection to the host `www.example.com` even if it hasn’t
 encountered any resources on that host just yet.
-
-That is another way to get rid of these pesky RTT - just get them
-out of the way sooner, so that they don't get in the way of your site's
-critical rendering path.
 
 ### Adaptive congestion window
 When the server starts sending data to the user, it doesn't know how much bandwidth it will have for that purpose. It can't be sure what
