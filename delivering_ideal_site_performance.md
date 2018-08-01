@@ -6,32 +6,32 @@
 
 What does it take to deliver web sites in the highest performing way
 possible? What would it take for us to say that given certain bandwidth,
-latency and CPU constraints, a web site was delivered to the user in the
+latency and CPU constraints, a web site was delivered to the user at the
 best possible speed?
 
-This is a question that I’ve spent a lot of time on in the last few
-years, thinking about what ideal performance would take both on the
+This is a question I’ve spent a lot of time on in the last few
+years, thinking about what ideal performance would take, on the
 browser side as well as on the server/content side.
 
 Ideal performance would require many different conditions in order to
 happen:
 
 * Early delivery - Content delivery needs to start as soon as possible.
-* Priorities - Critical content is delivered before less-critical one.
-* Full bandwidth pipe - The network bandwidth must be 100% used at all
+* Priorities - Critical content is delivered before less-critical.
+* Full bandwidth pipe - The network bandwidth must be fully used at all
 times until no content delivery is required.
-* Full CPU utilization - The CPU and the browser’s main thread should be
-100% used, as long as processing is required to transform the delivered
+* Full CPU use - The CPU and the browser’s main thread should be
+fully used, as long as processing is required to transform the delivered
 content into pixels on the screen, application behavior, and application
 logic.
 * No CPU Blocking - At the same time, the browser’s main thread should not be blocked by
 long execution tasks at any point in the loading process, in order to
 remain responsive to user input.
-* Minimal Content - No unneeded content should be sent to the user and required content should be highly compressed.
+* Minimal Content - No unnecessary content should be sent to the user and required content should be highly compressed.
 * Contention avoidance - Bandwidth and CPU contention should be avoided
-between low priority content and high priority one, as well as between
+between low priority content and high priority, as well as between
 same priority resources which need to be processed in their entirety.
-* Minimize latency impact - Use a CDN and improve content caching at the
+* Minimize latency impact - Use a Content Delivery Netwotk (CDN) and improve content caching at the
   client.
 * Control - Make sure that content and in particular third party content
 does not get in the way of your user's experience.
@@ -42,39 +42,39 @@ This chapter will explore strategies for satisfying these conditions
 in order to avoid unnecessary delays when delivering assets on
 the web. These
 conditions may require changes in the way browsers load web
-content. However, they cannot rely solely on that. In order for some of
+content. However, they cannot rely solely on that. For some of
 these conditions to be met, web content must also be adjusted.
 
-At the same time, due to limitations in size, we won’t be able to cover all the above conditions. Specifically, the chapter
-will focus on the ins and outs of resource loading and will leave CPU utilization, main-thread blocking
-avoidance and performance measurement aside.
+At the same time, due to limitations in size, this chapter won’t be able to cover all the conditions above.
+Specifically, we'll focus on the ins and outs of resource loading and leave aside CPU use, main-thread blocking
+avoidance and performance measurement.
 
-But before we dive into the details of the difference resource loading
+But before we dive into the details of the different resource loading
 phases and how they can be improved, let’s take a short detour to
-examine the browser’s resource loading process.
+examine the browser’s resource loading processes.
 
 ## How browsers load resources
 A typical web page is built from multiple resource types and often many resources
 that make sure the user's visual experience is a pleasant one.
 
-The HTML resource is there to give the browser the structure of the
-document, CSS is there to style the document and JavaScript gives it
+The HTML resource gives the browser the structure of the
+document, CSS styles the document and JavaScript provides
 functionality and interactivity. Beyond those, fonts make sure the
 reading experience is optimal, and image, video and audio resources
-provide the user with visuals as well an audio often required to get the
+provide visuals as well as the audio often required to convey the
 full context of the page.
 
 But all these resources are not declared in a single place when the
 browser initially fetches the HTML, when the user clicks on a link or
-types something into their URL bar. All the browser has to go on at that
-point in the HTML itself, and only once it fetched it does it know of
-some of those other resources required for the full site's experience.
+types something into their address bar. All the browser has to go on at that
+point is the HTML itself, and only once fetched does it know of
+some of the other resources required for the full site experience.
 
-So what does happen when the browser navigates to a new page?
+So what happens when the browser navigates to a new page?
 
 First, the browser starts the connection establishment process we
 discussed earlier, with DNS, TCP and TLS (which often costs us around 4
-RTTs). Then, it sends out a GET request for the HTML itself, and
+round-trip time). Then, it sends out a GET request for the HTML itself, and
 receives an initial buffer of the response from the server.
 The size of that response depends both on the HTML size and the initial
 congestion window of the server. A typical value for that is window is
@@ -82,21 +82,21 @@ congestion window of the server. A typical value for that is window is
 
 ### HTML processing
 
-One of the great things about HTML as a format is that it's a
-progressive one. It can be processed as it comes off the network, so
+One of the great things about HTML as a format is that it's
+progressive. It can be processed as it comes off the network, so
 even if the HTML the browser has is incomplete (as is often the case),
-the parts that already arrived can be processed and acted upon.
+the parts that have already arrived can be processed and acted on.
 
-Now, the browser needs to process that HTML in order to start building the DOM tree from it, and most importantly for our resource-loading interests, to figure out which
+Now, the browser needs to process that HTML to start building the DOM tree from it, and most importantly for our resource-loading interests, to figure out which
 resources are needed for it to fully construct and render the page. The
 HTML processing phase starts by the tokenization phase - 
 The browser breaks apart the HTML string into tokens, where each token
 represents a tag start, tag end, or the text between the tags.
 
-The tokens are just data
+The tokens are a data
 structure representation of the HTML's text, bringing it one step closer
 to something that can be properly handled by the HTML parser.
-They may represent invalid HTML, as the example below. That is expected, as
+They might represent invalid HTML, as the example below. That is expected, as
 it's not the tokenizer's role to enforce HTML parsing rules.
 
 <figure>
@@ -106,32 +106,31 @@ it's not the tokenizer's role to enforce HTML parsing rules.
 </figure>
 
 After the tokenization phase, the browser can start using those tokens
-in order to kick off resource loads. Since blocking scripts can cause
+to kick off resource loads. Since blocking scripts can cause
 the DOM creation, it's better not to wait to load resources until the DOM is
 ready.
-Instead, the browser is using its [preloader][preloader] in order to
-scan through the tokens and figure out resources that are highly likely to be requested later on, and kick off those requests ahead of time.
+Instead, the browser uses its [preloader][preloader] to
+scan through the tokens and figure out which resources are highly likely to be requested later on, and kick off those requests ahead of time.
 
-After the preloader ran its course, the browser uses those same tokens and parses
+After the preloader runs its course, the browser uses those same tokens and parses
 them according to HTML's parsing rules.  The result is
-DOM nodes, interconnected into a DOM tree.
+DOM nodes, interconnected as a DOM tree.
 Any tokens which represent
-invalid markup will be processed and used to create perfectly valid DOM.
+invalid markup will be processed and used to create a perfectly valid DOM.
 
 [preloader]: https://calendar.perfplanet.com/2013/big-bad-preloader/
 
 ### The critical rendering path
-We've seen above how the browser discovers resources, but not all
+We've seen how the browser discovers resources, but not all
 resources are created equal. In particular there's a set of resources
-that the browser requires in order to initially render the web page's
+the browser requires to initially render the web page's
 content.
 
-We talked about the creation of the DOM tree, and it is in fact
-required in order for the browser to be able to render the page to
-screen, but unfortunately it is not sufficient. In order to be able to
-initially render the page with its appropriate styling to the
+We talked about the creation of the DOM tree, and it is
+required for the browser to be able to render the page to
+screen, but unfortunately it is not sufficient. To render the page with its appropriate styling to the
 user (and avoiding a "Flash of unstyled content"), the browser also
-needs to create the Render Tree and in most cases the CSSOM.
+needs to create the render tree and in most cases the CSS Object Model.
 
 <aside>
 The CSS Object Model (CSSOM) is a set of APIs that
@@ -139,34 +138,33 @@ enable scripts to examine the styles of various DOM nodes, as well as
 setting them to change their appearance.
 </aside>
 
-In order to create both the CSSOM and the render tree, the browser needs
+To create both the CSSOM and the render tree, the browser needs
 to download all the external CSS resources and evaluate them. Then it
 processes those downloaded rules, along with
-any inline style tags and style attributes in order to calculate which
+any inline style tags and style attributes to calculate which
 styles (if any) are applied to each node in the DOM tree.
 
-This is also where blocking scripts come in. Blocking scripts (as their
-can suggest) block the HTML parsing as soon as they are discovered and
+This is where blocking scripts come in. Blocking scripts (as their
+name suggests) block HTML parsing as soon as they are encountered, and
 HTML parsing does not continue until they finish being downloaded,
-parsed and executed. One more detail about them is that, at least in
-many cases, they cannot
-start executing until all CSS that preceded them finished being
+parsed and executed. Furthermore, in many cases at least, they cannot
+start executing until all CSS that preceded them has been
 downloaded and processed.
 
-The reason for that is that those scripts can access the bits of the DOM
+The reason is that those scripts can access the bits of the DOM
 that are already generated and query their CSSOM. If they do that, the
 CSSOM state must be stable and complete. Hence browsers must make sure
-that this is the case, and they do that by downloading and processing
-all CSS before any CSSOM reads. The result of that can be a lot of delay
-to the JS execution, which in turn delays the DOM creation. Sadness.
+this is the case, and they do that by downloading and processing
+all CSS before any CSSOM reads. The result can be a lot of delay
+to JavaScript execution, which in turn delays DOM creation. Sadness.
 
-To top all that, the above is applicable to both external blocking
-scripts as well as inline ones. So inline scripts can and will block
+To top all that, this is applicable to external blocking
+scripts as well as inline ones. Inline scripts can and will block
 your HTML processing if they are preceded by external stylesheets.
 
-Now, once the browser have built a sufficiently large DOM tree and calculated the styles for each DOM node, it can
+Now, once the browser has built a sufficiently large DOM tree and calculated the styles for each DOM node, it can
 walk over the DOM and create the render tree, by creating an equivalent
-tree for each node that actually partake in the page's rendering and is
+tree for each node that actually partakes in the page's rendering and is
 displayed on screen.
 
 After that, the browser can proceed to laying out the different elements
@@ -183,9 +181,9 @@ mode.
 #### Request destination
 The request's [destination][destination] indicates what "type" of resource we're
 expecting to receive from the server and how that resource will be used.
-Different destinations include "stylesheet", "script", "image", "font"
-and more. A requests' destination has several implications on resource
-loading. As we'll discuss later, it is used in determining the priority
+Different destinations include "style", "script", "image", "font"
+and more. A requests' destination has several implications for resource
+loading. As we'll discuss later, it determines the priority
 of the request. It is also used in various internal caches in the
 browser to make sure a previous response can be served to a current
 request only when their destinations match.
@@ -196,18 +194,18 @@ A request's [credentials mode][credentials] determines whether the request gets
 credentials information (cookies in the typical case) sent along with it
 to the server. Possible values can be:
 
-* "include" - indicating that a request will have credentials
-* "omit" - indicating that it will not have credentials
-* "same origin" - indicating that a request will have credentials only
+* "include": a request will have credentials
+* "omit": it will not have credentials
+* "same origin": a request will have credentials only
   when sent to the same origin.
 
-Each resource type may have different credentials mode by default.
+Each resource type may have a different credentials mode by default.
 Resource fetches triggered by `<img>` and `<script>` will have a default
 credentials mode of "include" by default, while font fetches will have a
 "same origin" credentials mode. `fetch()` calls used to have a default
 "omit" mode, but recently changed to "same origin".
 
-All that to say that as a performance-aware web developer, you need to
+All that to say, as a performance-aware web developer, you need to
 pay close attention to the credentials mode of the resources you're loading.
 
 In markup, developers can also change the credentials mode of the
@@ -229,30 +227,30 @@ Why does the credentials mode matter?
 
 First of all, you may expect cookies on the server for a certain
 request and understanding credentials mode will help you understand when
-they'd be there and when they will not be.
+they'd be there and when they would not be.
 
-Otherwise, similarly to the request
+Otherwise, like the request
 destination, the credentials mode determines if a request and a response
-can get matched in the browser's internal caches. On top of that, some
+can be matched in the browser's internal caches. On top of that, some
 browsers (most notably Chrome) will use separate connections for
-requests of different credential modes. We'll expand later the impact of
+requests of different credential modes. We'll expand later on the impact of
 that.
 
 ### All set?
 
-Now with a better understanding of the way browsers load resources,
-let’s take a look at the different conditions required to make that
+With a better understanding of the way browsers load resources,
+let’s now take a look at the different conditions required to make
 loading as fast as possible.
 
 # Early Delivery
 
 When it comes to web performance, our goal is usually seemingly obvious:
-we want _meaningful_ content to be accessible as fast as possible. As a
-part of it, we need resources that are part of the critical path to be delivered early.
+we want _meaningful_ content to be accessible as quickly as possible. As
+part of that, we need resources on the critical path to be delivered early.
 
  How early is early enough? Probably shortly after the browser sent out a request for
 it, typically after the user clicked on a link or typed something in
-their URL bar. (or even before that, if the application can have high
+their address bar. (Or even before that, if the application can have high
 enough confidence that they would — e.g. when the user moves their mouse pointer within
 a certain proximity of a button)
 
@@ -263,93 +261,93 @@ traffic is content, some part of it is just protocol information
 enabling the delivery of that content.
 But the overhead is also manifested in time - establishing a connection
 or passing along critical information from client to server or vice
-versa can take multiple Round-Trip-Times (or RTTs), resulting in those
+versa can take multiple round-trip times (RTTs), resulting in those
 parts of the delivery being highly influenced by the network's latency.
 
-The result of that is a delay until the point where the browser
+The consequence is a delay until the point where the browser
 starts receiving the response from the server (also known as
-Time-To-First-Byte or TTFB). Recent
+time to first byte, TTFB). Recent
 advances in the underlying protocols make that less of an issue, and
 can reduce TTFB significantly.
 
 ### 0-RTT
-In their non-cutting-edge version, the DNS, TCP and TLS protocols require a large number of
-RTTs before the server is able to start delivering useful data to the user.
+In their non-cutting-edge versions, the DNS, TCP and TLS protocols require a large number of
+RTTs before the server is able to start delivering useful data.
 
 ![](media/dnstcptls.svg)
 
-Protocol advancements such as QUIC on the one hand and TCP-Fast-Open
-(TFO) and TLS1.3 on the other hand, made most of that obsolete. These protocols
-rely on previous established connections in order to keep cryptographic
+Protocol advancements such as Quick UDP Internet Connection (QUIC) on the one hand and TCP-Fast-Open
+(TFO) and TLS1.3 on the other, made most of that obsolete. These protocols
+rely on previously established connections to keep cryptographic
 "cookies" that remember past sessions, and allow previous sessions to be
 recreated instantaneously.
 There are still many caveats and many scenarios where the connection
 will take more than a single RTT to be established, but generally, using those cutting edge protocols
-will mean that there are very few RTTs which get in the way of content delivered to our users.
+will mean there are very few RTTs which get in the way of delivering content to our users.
 
 <aside>
 
 #### QUIC - Quick UDP Internet Connection
 
-HTTP/2 as a protocol brought many necessary improvements to resource
+HTTP/2 brought many necessary improvements to resource
 delivery over HTTP. HTTP/1 it had a severe head-of-line blocking
-issue, where the browser could have sent in practice only one request at
+issue, where the browser could send in practice only one request at
 a time on a connection. That created a linear relationship between the
 number of requests a page had and the number of RTTs it took for the
 page's resources to be downloaded. As a result, browsers settled on
 opening multiple connections per host (typically 6 connections for
-modern browsers), to reduce the latency by a fixed factor.
+modern browsers) to reduce the latency by a fixed factor.
 
 HTTP/2 fixed that head-of-line blocking issue by enabling multiplexing of multiple request and
 responses over a single connection, without incurring extra latency
-costs per request. As a result, for HTTP/2 browsers only use a single
-connection per host. But a side effect of that is that HTTP/2 delivery
+costs per request. As a result, browsers only use a single
+connection per host with HTTP/2. But a side effect of that is that HTTP/2 delivery
 is more sensitive to packet losses than HTTP/1, as each packet loss
-impacts *all* the resources, rather than just one of them.
+affects *all* the resources, rather than just one of them.
 
 As a result, in highly-lossy environments, there are scenarios where
 HTTP/2 ends up being slower than HTTP/1, making the switch to HTTP/2
-tricky for sites that have large chunks of their audience coming in from
-bad networking environments.
+tricky for sites that have large chunks of their audiences coming in from
+poor networking environments.
 
-In order to resolve that, Google Chrome folks started exploring ways to
+To resolve that, the Google Chrome team started exploring ways to
 make the transport layer more aware of HTTP/2's request-response streams.
 Since TCP is widely deployed and inspected by intermediary network
 components, it's practically impossible to significantly change the
 protocol without some of those network components breaking that traffic
 in the process. Re-implementing a reliable transport layer over a
-different transport protocol, UDP, was a simpler option.
+different transport protocol – the User Datagram Protocol (UDP) – was a simpler option.
 
-The result is QUIC (standing for Quick UDP Internet Connections) - a new
-protocol combining the transport, encryption and application layers all
+The result is QUIC - a new
+protocol combining the transport, encryption and application layers
 into a single, coordinated processing model.
 
-This new protocol have several shiny new improvements over the protocols
+This new protocol has several shiny new improvements over the protocols
 of yore:
 
-* 0-RTT - combining layers means that the protocol needs to
-  establish a connection once (for both transport and encryption
+* 0-RTT - combining layers means the protocol needs to
+  establish a connection only once (for both transport and encryption
 layers). On top of that, once a user has established a connection to a
-server once, the client can remember those encryption credentials and
+server, the client can remember those encryption credentials and
 resume that same connection in the future with 0-RTTs (sending those
 past-credentials along with the request).
 * Stream-aware loss handling - Another major advantage of merging the
-  layers is in handling of packet losses. Both TCP and QUIC offer
-reliable transport, which means that when a packet is lost, it has to be
-successfully retransmitted before the following packets can be delivered
+  layers is in handling packet losses. Both TCP and QUIC offer
+reliable transport, which means when a packet is lost, it has to be
+successfully retransmitted before the subsequent packets can be delivered
 to higher layers. However, TCP guarantees reliable delivery for the
 entire connection, while QUIC guarantees reliable delivery *per
 request-response stream*. That means that if a packet is lost in QUIC,
-it will only delay the impacted resources, while HTTP/2 over TCP will
+it will only delay the affected resources, while HTTP/2 over TCP will
 delay *all resources*.
 * Tighter prioritization - Because QUIC is implemented over UDP, the
   transport layer logic and queues are all implemented in the server in userland code, rather than in the kernel, where TCP's logic is implemented.
 As a result, it's easier for the server to have tighter controls over
-the priorities of the resources that are currently in the sending
+the priorities of the resources currently in the sending
 queues. One of the problems with the HTTP/2 over TCP model is that the
-TCP queues are outside of the server's control. When the server is
-sending down a mix of resources in different priorities, there can be
-situations where the TCP queues already have not-yet-sent lower priority
+TCP queues are outside of the server's control. When the server
+sends down a mix of resources of different priorities, there can be
+situations where the TCP queues already contain not-yet-sent lower priority
 resources, which will then delay the high-priority resource from being
 sent. With QUIC, a server implementation can have tighter control over
 the queues and make sure that lower priority resources don't get in the
@@ -357,8 +355,8 @@ way.
 
 QUIC is not yet a standard protocol. It is only implemented as part of
 the Chromium project's network stack, and used as a library by Chromium, Android apps as well as servers.
-At the same time, there are significant efforts at the IETF - the Internet Engineering Task
-Force - to create a standard version of the protocol, so that it can be implemented independently in an interoperable way across multiple browsers and servers.
+At the same time, there are significant efforts at the Internet Engineering Task
+Force (IETF) to create a standard version of the protocol, so it can be implemented independently in an interoperable way across multiple browsers and servers.
 </aside>
 
 ### Preconnect
