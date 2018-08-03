@@ -1002,65 +1002,62 @@ web app.
 
 ### JS Enhanced experience - AKA Progressive Enhancement
 Earlier we talked about the advantages of HTML as a
-streaming format. This may be considered an old-school opinion, but in
-order to create the highest performing web experience, it is often
+streaming format. This might be considered an old-school opinion, but
+to create the highest-performing web experience, it is often
 better to build your application's foundations as HTML and (minimal)
 CSS, and then later enhance it with JavaScript for improved user
 experience.
 
-That doesn't mean you have to shy away from fancy JavaScript based
-animations or avoid dynamic updates to your content using JS. It just
-means that if you can make your initial loading experience not
-JavaScript-dependent, it is highly likely that it will be faster.
+You don't have to shy away from fancy JavaScript-based
+animations, or avoid dynamic updates to your content using JS. But
+if you can make your initial loading experience not dependent on
+JavaScript, it is highly likely that it will be faster.
 
 I'm not going to go into details regarding writing progressively
-enhanced web apps, as this is well documented elsewhere.
-
+enhanced web apps – this is well-documented elsewhere.
 I'm also not going to argue with the fact that in some cases, JavaScript
-is mandatory and progressive enhancement makes little sense in your
-case.
+is mandatory and progressive enhancement makes little sense.
 
 But if you're delivering content that the user then interacts with, it's 
 likely better for you to deliver that content as
 HTML, and then enhance it with JS.
 
 #### How to Progressively Load JS
-If you are following the progressive enhancement principles, you want to
-load your JS in a non blocking way, but still want these enhancements to
+If you follow the principles of progressive enhancement, you want to
+load your JS in a non-blocking way, but still want enhancements to
 be there relatively early on. More often than not, the web platform's
-native mechanisms to load scripts will not be your friends. We talked in
+native mechanisms to load scripts will not be your friends. We talked at
 length about blocking scripts and why they're bad, so you can probably
 guess they are not the way to go. But what should you do?
 
-#### Why not Async
+#### Why Not async?
 
 First, let's talk about what you shouldn't do. `async` is an attribute
-on the script element that enables it to be non-blocking, download in
+on the `<script>` element that enables it to be non-blocking, download in
 parallel to other resources, and run whenever it arrives at the browser.
 
 While that sounds great in theory, in practice it can result in race
-conditions and can have
-performance implications:
+conditions and have performance implications:
 
 * `async` scripts run whenever they arrive. That means they can run out of order so must not have any dependencies on any other script in the page.
-* Because they run whenever they arrive they can run either before or
+* Because they run whenever they arrive, they can run either before or
   after the page is first painted, depending on network conditions and
 network optimizations. This creates a paradox: optimizing your async
 scripts (better compress them or make sure they arrive earlier using
-Server Push or preload) can often result in performance regressions!!
-Arriving earlier to the browser means that their parsing and execution
-(which on mobile can be hefty) is now [render blocking][souders_async], even though their
-download was not!
+Server Push or preload) can often result in performance regressions!
+Arriving sooner to the browser means their parsing and execution
+(which on mobile can be hefty) is now [render-blocking][souders_async], even though their
+download was not.
 
 For that reason, `async` is not a great download mechanism, and should be
-avoided in most cases.
+avoided most of the time.
 
-One more thing: in order to even consider making certain scripts
-`async`, those scripts must avoid using APIs such as `document.write`
+One more thing: to even consider making certain scripts
+asynchronous, those scripts must avoid using APIs such as `document.write`,
 which require blocking the parser at the point in which the script is
 injected. They should also avoid assuming the DOM or the CSSOM are in a
-specific state when they run. (so avoid e.g. appending nodes to the
-bottom of the body element, or rely on certain styles to be applied)
+specific state when they run. (Avoid, for example, appending nodes to the
+bottom of the `<body>` element, or relying on certain styles to be applied)
 
 [souders_async]: https://calendar.perfplanet.com/2016/prefer-defer-over-async/
 
@@ -1068,50 +1065,48 @@ bottom of the body element, or rely on certain styles to be applied)
 As far as native script mechanisms go, that leaves us with the `defer`
 attribute. `defer` has the following characteristics:
 
-* a deferred script will download without blocking the rendering of the page.
-* Deferred scripts run at a particular point in time, after the DOM
+* A deferred script will download without blocking the rendering of the page.
+* Deferred scripts run at a particular point in time: after the DOM
   tree is complete and before the DOMContentLoaded event fires. That
 means they run after all inline scripts, and can depend on them.
 * Deferred scripts execute in the order they are included in the
   document, which makes it easier to have dependencies between them.
 
-So defer is a reasonable way to make sure scripts will not interfere
+`defer` is a reasonable way to make sure scripts will not interfere
 with the page's first render, but those scripts will delay the browser's
-DOMContentLoaded event (which triggers JQuery's `ready()` callback). Depending on your app, that may be problematic if you're relying on user visible functionality to hang off of that event.
+DOMContentLoaded event (which triggers JQuery's `ready()` callback). Depending on your app, that may be problematic if you rely on user visible functionality to hang off of that event.
 
-In terms of priorities, In Chromium both `async` and `defer` scripts are
-(at the time of writing) being downloaded with low priority,
-similarly to images. In other browsers, such as Safari and Firefox,
-that's not necessarily the case, and deferred and async scripts have the
+In terms of priorities, in Chromium, both `async` and `defer` scripts are
+(at the time of writing) downloaded with low priority,
+similar to images. In other browsers, such as Safari and Firefox,
+that's not necessarily the case, and deferred and asynchronous scripts have the
 same priority as blocking scripts.
 
-In order to defer scripts, similar limitations as to `async` apply: They
+Similar limitations apply to deferred scripts as asynchronous: they
 cannot include `document.write()` or rely on DOM/CSSOM state when they
-run. (even though the latter is less restrictive, as there are
-guarantees that they'd run right before DOMContentLoaded and in order)
-
-<!-- TODO: make sure that Firefox is really not doing anything smart here -->
+run – even though the latter is less restrictive, as there are
+guarantees that they'd run right before DOMContentLoaded and in order.
 
 <aside>
 Using `&lt;script defer>` only became a realistic option in the last few
 years.
-IE9 and below had a fatal issue with it, causing content that uses defer
-to be [racily broken][ie9_defer], if the scripts actually have
+IE9 and earlier had a fatal issue with it, causing content that used `defer`
+to be [racily broken][ie9_defer] if the scripts actually had
 interdependencies. Depending on the download order, deferred scripts
-which add HTML to the DOM (e.g. using `innerHTML`) may trigger the
-parser to start executing later scripts *before the first script has
+that added HTML to the DOM (using `innerHTML`, for example) could have triggered the
+parser to start executing later scripts *before the first script had
 finished running*. That was a huge blocker for the adoption of `defer`
 scripts for many years.
 
 But since the usage of IE9 and older is very low nowadays, unless your
-audience is very much old IE centric, it is probably safe for you to
-use defer, and ignore potential issues.
+audience is very much old IE-centric, it is probably safe for you to
+use `defer` and ignore potential issues.
 </aside>
 
 [ie9_defer]: https://github.com/h5bp/lazyweb-requests/issues/42
 
 
-#### Why not blocking JS at the bottom
+#### Why Not Use Blocking JavaScript at the Bottom?
 
 Sending your non-essential scripts as blocking scripts at the bottom of
 the page used to be a popular mitigation technique to prevent blocking
@@ -1119,66 +1114,66 @@ scripts from slowing down first render. It was born in an age where
 `defer` and `async` did not exist, and to be fair, was significantly
 better than the alternative: blocking scripts at the top of the page.
 
-With that said, it's not necessarily the best option, and has some downsides:
+That said, it's not necessarily the best option, and has some downsides:
 
 * While not as bad as blocking the HTML parser and DOM creation at the
   top of the document, blocking scripts at the bottom of the page still
-block them, which means DOMContentLoaded will be delayed.
-* Priority-wise blocking scripts at the bottom of the page are
-  downloaded with medium priority in Chromium based browsers, and with
+blocks them, which means DOMContentLoaded will be delayed.
+* Blocking scripts at the bottom of the page are
+  downloaded with medium priority in Chromium-based browsers, and with
 high priority elsewhere.
-* Scripts at the bottom of the page are discovered late by the browser
-  (after the entire HTML is download and processed). Even in the advent
+* Scripts at the bottom of the page are discovered late by browsers
+  (after the entire HTML is downloaded and processed). Even in the advent
 of the browser's preloader, their download can start relatively late.
 
-#### Dynamically added, async false
-Another method to dynamically load scripts is to insert them to
+#### Dynamically Added, `async` False
+Another method to dynamically load scripts is to insert them into
 the document using JavaScript, but make sure they are loaded in order,
-in case of dependencies between the scripts.
+in case of dependencies between them.
 
 According to the HTML spec, when scripts are dynamically added to the
-document, they are assumed to be async, so download starts immediately,
-and they will execute whenever the are fully downloaded.
+document, they are assumed to be asynchronous, so download starts immediately
+and they will execute whenever fully downloaded.
 
 [Setting the `async` attribute to false][script_loading] on such scripts changes their
 behavior. They still don't block the HTML parser, and therefore do not
 block rendering. At the same time, they will be executed in order.
 
-The main advantage of this approach over previous mentioned ones, is
+The main advantage of this approach over previously mentioned ones, is
 that the scripts will execute in order, similar to defer, but will not wait
 till the DOM is fully constructed, right before DOMContentLoaded fires.
 
-There are a few disadvantages though: This method requires a script in
-order to load your scripts, which adds some cost. As a result of being
-script based, these resources are not discoverable by the browser's
-preloader, so their requests tend to kick off a bit later, and if the
+There are a few disadvantages, though: this method requires a script
+to load your scripts, which adds some cost. As a result of being
+script-based, these resources are not discoverable by the browser's
+preloader, so their requests tend to kick off a bit later. And if the
 page contains any blocking scripts above the loading scripts, they can
 be delayed significantly. The advantage of the approach can also
 become its disadvantage: the "execute once you download" approach can
 result in premature execution, which can stall more critical code or
-vital browser events (e.g. first paint).
+vital browser events (like first paint).
 
 [script_loading]: https://www.html5rocks.com/en/tutorials/speed/script-loading/
 
-#### Trigger JS loads only after the first RAF triggered, as a first paint proxy
+#### Using requestAnimationFrame as a First-Paint Proxy
 Like we've seen for CSS, you can use `requestAnimationFrame` as a way to
-load non-critical scripts after the first render happened, ensuring they
-won't contend on bandwidth with critical CSS and JS, but still kicking
+load non-critical scripts after the first render, ensuring they
+won't compete for bandwidth with critical CSS and JavaScript, but still kicking
 off their download as soon as possible.
 
 #### Preload with onload handler
 Similarly, we can use preload and its `onload` event handler to kick off
 script downloads and make sure they run once they finish downloading.
 
-This is very similar to `async` script, with some subtle differences:
+This is very similar to `async`, with some subtle differences:
 
 * Priority of preloaded scripts is assumed to be identical to that of
-  blocking scripts, while at least in some browsers, `async` will get
+  blocking scripts, while (at least in some browsers) `async` will get
 lower priority.
-* Unlike `async`, with preload you can make sure that the script doesn't
-  run until some milestone is hit (e.g. first paint happened)
+* Unlike `async`, with preload you can make sure the script doesn't
+  run until some milestone is hit (for example, first paint happened)
 
-A simple version of this, mixing both preload and RAF, may look something like this:
+A simple version of this, mixing both preload and rAF, might look something like this:
 
 ```
     <script>
@@ -1211,59 +1206,56 @@ A simple version of this, mixing both preload and RAF, may look something like t
 
 #### Missing high level feature
 Similarly to CSS, preload gives us the platform primitives that enable
-us to load script decoupled from their execution. But for CSS, we can
-also now include styles in the body, and expect them to Just Work&trade;
-without impacting the portion of the document that's above them.
+us to load scripts decoupled from their execution. But for CSS, we can
+also now include styles in the `<body>`, and expect them to Just Work&trade;
+without affecting the portion of the document above them.
 
-For scripts, we don't currently have such a high level feature. An
-attribute on the script element that will enable us to simply load them
+For scripts, we don't currently have such a high-level feature: an
+attribute on the `<script>` element that will enable us to simply load them
 without the script being blocking, while knowing that it will run,
-potentially in order, at a certain milestone (first paint, after onload completed, etc).
+potentially in order, at a certain milestone (first paint, after onload completed, and so on).
 
 This is a problem that's [being worked on][intuitive_js] in Chrome,
-where the problem is being defined and various solutions outlined.
-Hopefully once that work is done, the solution will get standardized and
+where the problem is being defined and various solutions have been outlined.
+Once that work is done, the solution will hopefully be standardized and
 implemented in all other modern browsers.
 
 [intuitive_js]: https://bugs.chromium.org/p/chromium/issues/detail?id=838761
 
-### JS reliant experience
-Previously we talked about web experiences that are augmented by JS:
-where the content is built by HTML and CSS and JS is then used to
-improve the experience.
-That's not always the case on today's web. Many web sites today rely on
-JS for their very basic rendering, adding those scripts to the web
+### JavaScript-Reliant Experience
+Many web sites today rely on
+JavaScript for their basic rendering, adding those scripts to the web
 site's critical rendering path.
 
-That significantly delays the initial rendering of the page, especially
-on mobile, as the browser needs to download hefty amount of scripts, parse them and execute them 
-before it can even start creating the real DOM. That also means that
-early discovery of resources, using the preloader, is not really
-relevant in those cases, as the HTML tokens contain no interesting
-information regarding the resources that will be required.
+This significantly delays the initial rendering of the page, especially
+on mobile, as browsers need to download a hefty amount of scripts, parse them, and execute them
+before they can even start creating the real DOM. In such cases,
+early discovery of resources using the preloader is not really
+relevant, as the HTML tokens contain no interesting
+information about the resources that will be required.
 
-So, if you're starting out building a content site, I'd suggest to avoid
+If you're starting out building a content site, I'd suggest avoiding
 building it in a way that relies on JavaScript for the basic rendering.
 
-That doesn't necessarily mean that you cannot develop your site using
-your favorite language and tools. Many frameworks today enable server side
-rendering, where for the first page the user sees, the page gets
+However, that doesn't necessarily mean that you can't develop your site using
+your favorite language and tools. Many frameworks today enable server-side
+rendering, where the first page the user sees is
 rendered with good old-fashioned HTML and CSS, and JavaScript kicks in
-later, enabling the single page app experience from that point on. 
+later, enabling the single-page app experience from that point on.
 
 Unfortunately, some popular JavaScript frameworks employ server-side
 rendering as a way to get the content to the user early, but then
-require large amount of JS execution in order to make that content
+require a large amount of JavaScript execution to make that content
 interactive. Whenever possible, you should steer away from such
-frameworks and look for alternatives which server-rendered content is
+frameworks, and look for alternatives where server-rendered content is
 functional on its own.
 
-The best way to tell would be to test existing sites which use the
-frameworks you're considering for your project and look at their
+The best way to tell would be to test existing sites that use the
+frameworks you're considering for your project, and look at their
 interactivity metrics on mobile. If the page takes a large number of
-seconds to render on mobile, or if it renders quickly, but then frozen
-in what seems like forever to the user, that's a big red flag indicating
-you should avoid that framework.
+seconds to render on mobile, or if it renders quickly but then freezes
+for what seems like forever to the user, that's a big red flag warning
+you against that framework.
 
 You can run such tests, on real devices, at [webpagetest.org][wpt]. You
 could also run a [lighthouse][lighthouse] [audit][audit] of those sites,
