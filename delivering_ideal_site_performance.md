@@ -527,7 +527,7 @@ comes from a database).
 
 Alternatively, you can try to build in application logic that converts
 these header-based browser instructions into content-based ones (like
-setting the cookies using JS, or setting some headers using meta tags as part of
+setting the cookies using JavaScript, or setting some headers using meta tags as part of
 the content itself).
 
 #### Compression buffering
@@ -691,7 +691,7 @@ In the priority queue model, they make sure that a request doesn't go
 out to the network before higher-priority requests.
 
 Typically, browsers will assign higher priorities to rendering-critical resources. In Chrome, that translates into the following order:
-HTML, CSS, fonts, JS, in-viewport images, out-of-viewport images.
+HTML, CSS, fonts, JavaScript, in-viewport images, out-of-viewport images.
 Chrome also follows some further heuristics which go beyond what other
 browsers typically do:
 
@@ -982,7 +982,7 @@ If you have styles that are needed only for follow-up pages, you could use
 the inapplicable media technique, but arguably `<link rel="prefetch">` may
 be a better tool for the job.
 
-## JS - critical and non-critical
+## JavaScript - critical and non-critical
 Like CSS, blocking JavaScript also holds off rendering. Unlike
 CSS, JavaScript [processing][cost_js] is significantly more expensive than CSS
 and its render-blocking execution can be arbitrarily long.
@@ -994,13 +994,13 @@ At the same time, in many cases, JavaScript is responsible for
 engaging user experiences on the web, so we cannot wean ourselves off it
 completely.
 
-What's the middle ground? How can we enable performant JS experiences?
+What's the middle ground? How can we enable performant JavaScript experiences?
 Advice here actually varies, depending on the role of JavaScript in your
 web app.
 
 [cost_js]: https://medium.com/dev-channel/the-cost-of-javascript-84009f51e99e
 
-### JS Enhanced experience - AKA Progressive Enhancement
+### JavaScript Enhanced experience - AKA Progressive Enhancement
 Earlier we talked about the advantages of HTML as a
 streaming format. This might be considered an old-school opinion, but
 to create the highest-performing web experience, it is often
@@ -1009,7 +1009,7 @@ CSS, and then later enhance it with JavaScript for improved user
 experience.
 
 You don't have to shy away from fancy JavaScript-based
-animations, or avoid dynamic updates to your content using JS. But
+animations, or avoid dynamic updates to your content using JavaScript. But
 if you can make your initial loading experience not dependent on
 JavaScript, it is highly likely that it will be faster.
 
@@ -1020,11 +1020,11 @@ is mandatory and progressive enhancement makes little sense.
 
 But if you're delivering content that the user then interacts with, it's 
 likely better for you to deliver that content as
-HTML, and then enhance it with JS.
+HTML, and then enhance it with JavaScript.
 
-#### How to Progressively Load JS
+#### How to Progressively Load JavaScript
 If you follow the principles of progressive enhancement, you want to
-load your JS in a non-blocking way, but still want enhancements to
+load your JavaScript in a non-blocking way, but still want enhancements to
 be there relatively early on. More often than not, the web platform's
 native mechanisms to load scripts will not be your friends. We talked at
 length about blocking scripts and why they're bad, so you can probably
@@ -1258,23 +1258,23 @@ for what seems like forever to the user, that's a big red flag warning
 you against that framework.
 
 You can run such tests, on real devices, at [webpagetest.org][wpt]. You
-could also run a [lighthouse][lighthouse] [audit][audit] of those sites,
-pointing out the site's Time to Interactive metrics, among others.
+could also run a [Lighthouse][lighthouse] [audit][audit] of those sites,
+identifying the site's Time to Interactive metrics, among others.
 
 [wpt]: https://www.webpagetest.org/
 [lighthouse]: https://developers.google.com/web/tools/lighthouse/
 [audit]: https://www.webpagetest.org/lighthouse
 
-#### But I already do rely on JS. What do I do?
-In case you already rely on JS for your existing site, look into
-server side rendering solutions. If they exist for your framework, they
+#### But I Already Rely on JavaScript. What Do I Do?
+If you already rely on JavaScript for your existing site, look into
+server-side rendering solutions. If they exist for your framework, they
 will help speed up your initial rendering. Unfortunately SSR solutions can't always
 help your site's interactivity, if they weren't designed with that in
-mind. That is because they often involve “hydrating” the DOM - attaching
+mind. They often involve “hydrating” the DOM: attaching
 event listeners and binding data structures to it, which can require
 significant processing.
 
-If there's no server-side rendering solution for your case, `<link rel=preload>` can help you overcome the fact that your site
+If there's no SSR solution for your case, `<link rel="preload">` can help you overcome the fact that your site
 is sidestepping the browser's preloader, and give your browser's network
 stack something to do while the user's CPU is churning away executing
 JavaScript. Because Priority Hints are not yet widely implemented, you
@@ -1282,32 +1282,35 @@ need to make sure these preload links are either included in the HTML
 after more critical resources, or added to it dynamically after first
 paint.
 
-You may be able to switch to a lighter-weight version of your
+You may be able to switch to a lighter version of your
 framework. Many popular frameworks have a lighter alternative, which is
-while being faster. There are of-course some trade-offs to be had there,
+mostly compatible (so you could easily switch your content to it)
+while being faster. There are, of course, some trade-offs,
 as that lighter weight may come at a cost to functionality you rely on.
-But in many cases, it just sheds off features you don't even use,
-resulting in faster experience at no particular cost. 
+But often it just removes features you don't use,
+resulting in a faster experience at no particular cost. 
 
-Another way to make your JS reliant app faster is to use intelligent
-bundling solutions like WebPack, Rollup or Parcel to code-split your
-application into route-specific bundles, and only load upfront the code
+Another way to make your JavaScript-reliant app faster is to use intelligent
+bundling solutions like [webpack][webpack], [Rollup][rollup] or [Parcel][parcel] to code-split your
+application into route-specific bundles, and only load up front the code
 you need for your current route. Then you can use prefetch to download
-future routes as lower priority resources
+future routes as lower-priority resources.
 
-Eventually, consider rewriting the major landing pages for your
+Eventually, consider rewriting the major landing pages of your
 application, so that users can get them rendered and working relatively
-fast, and then use them to "bootstrap" the rest of your app.
+fast, and then use them to bootstrap the rest of your app.
 
-<!-- TODO: passing that through Andy and Kadlec -->
+[webpack]: https://webpack.js.org/
+[rollup]: https://rollupjs.org/
+[parcel]: https://parceljs.org/
 
-## Image lazy loading
+## Lazy Loading Images
 Images often comprise a large chunk of the page's downloaded bytes. At
-the same time, many of the images on the web are downloaded, decoded and
-rendered only for the user to never actually see them, as they were too
-far off the initial viewport, and the user never scrolled that far.
+the same time, many of the images on the web are downloaded, decoded, and
+rendered only never to be seen, as they were too
+far off the initial viewport and the user never scrolled that far.
 
-Lazy loading out-of-viewport images is something that JS libraries have
+Lazy loading out-of-viewport images is something that JavaScript libraries have
 been experimenting with for a while.
 There are many decent open source solutions for you to pick from, and
 they can significantly reduce the amount of data your users download by
@@ -1319,94 +1322,96 @@ A few things to note regarding lazy loading solutions:
   they will be discovered by the browser later.
 * The amount of in-viewport images may vary widely between different
   viewports, depending on your application.
-* You need to make sure that when the images do get downloaded, that
+* You need to make sure that when the images have downloaded, that
   doesn't cause a relayout of the entire content, as that will introduce
 jank to the scrolling process.
 
-The first two points are hard to get right, as they mean you would need
-to automatically generate your HTML based on the device's viewport
-dimensions, to include the in-viewport images in markup and lazy load
-the rest. The third requires you to pay particular attention to your
+The first two points are hard to get right, as to include the in-viewport images in markup and lazy load
+the rest you would need to automatically generate your HTML based on the device's viewport
+dimensions. The third requires you to pay particular attention to your
 markup and styles, and make sure your images are well contained in terms
 of its width as well as its height.
 
-Recently browsers have [started looking][chrome_lazy_load] into doing that kind of lazy
-loading natively, but the same problems apply there. Currently the
-browser doesn't know which images will be in the viewport, nor what
-their dimensions before at least some parts of the image are downloaded.
+Recently browsers have [started looking][chrome_lazy_load] into
+performing image lazy
+loading natively, but the same problems apply. Currently,
+browsers don't know which images will be in the viewport, nor what
+their dimensions are before at least some parts of the image are downloaded.
 I believe we will need to find a standard way for developers to communicate that
 information to the browser, so it can do the right thing. It will also
 be helpful to define a simple way for developers to define an element's
-aspect-ratio, rather than rely on [`padding-top` based hacks][padding_ratio].
+aspect ratio, rather than rely on [`padding-top`-based hacks][padding_ratio].
 
 [chrome_lazy_load]: https://groups.google.com/a/chromium.org/forum/#!msg/blink-dev/czmmZUd4Vww/1-H6j-zdAwAJ
 [padding_ratio]: https://css-tricks.com/aspect-ratio-boxes/
 
 ### IntersectionObserver
-JavaScript based lazy loading have become significantly easier to
+JavaScript-based lazy loading has become significantly easier to
 implement in a performant way with the introduction of
-[IntersectionObserver][intersectionobserver]. 
-Traditionally, JS based lazy loading was based on listening to the
-browser's scroll events, and calculate the image's position relative to
-the viewport on each one of those events. In many cases, that resulted in a lot of
+[IntersectionObserver][intersectionobserver].
+Traditionally, JavaScript-based lazy loading rested on listening to the
+browser's scroll events, and calculating the image's position relative to
+the viewport on each one of those events. That often resulted in a lot of
 main-thread jank, as it needed to perform these calculations as the user
-was scrolling. IntersectionObserver enables developers to get a callback
-whenever a certain element is in a certain distance from the viewport.
-That enables lazy loading implementations achieve their goal without
-spamming the main-thread's event loop.
+was scrolling.
+
+IntersectionObserver enables developers to get a callback
+whenever a particular element is a certain distance from the viewport.
+Lazy-loading implementations achieve their goal, then, without
+spamming the main thread's event loop.
 
 [intersectionobserver]: https://developers.google.com/web/updates/2016/04/intersectionobserver
 
 ### Placeholders
-You can also include a low quality placeholder to replace your image
+You can also include a low-quality placeholder for your image
 until it gets loaded. This has a couple of advantages:
 
-* In case your users scrolled fast and the image has not loaded yet, a
+* If your users scrolled fast and the image has not yet loaded, a
   placeholder gives them a better experience.
-* It will resolve the re-layout issues without you having to define
+* It will resolve re-layout issues without you having to define
   explicit image dimensions or CSS-based aspect ratios.
 
 In its simplest form, you could create a thumbnail of your image and
 incorporate it in your markup as a data URI. You're probably better off
-doing that using some build-time automated solution rather than
+doing that through a build-time automated solution than
 manually.
 
 There are also [more advanced techniques][sqip] available that can help
-you get a nicer blurry image, without paying more in terms of bytes.
+you get a nicer blurred placeholder image, without paying more in bytes.
 
 [sqip]: https://github.com/technopagan/sqip
 
 ### What to do?
 
-A few points worth looking into when picking an image lazy loading
+A few points worth looking into when picking an image lazy-loading
 solution:
 
-* It should get bonus points for using IntersectionObserver, as it'll be
-  likely to be less-janky and more accurate.
-* You should avoid applying lazy-loading for images that are in the
-  viewport for most reasonable viewports your users use.
+* It should get bonus points for using IntersectionObserver, as it'll
+  likely be less janky and more accurate.
+* Avoid applying lazy-loading for images in the
+  viewport for most reasonable viewports sizes.
 * Make sure your images' dimensions are well defined in markup or
   styles. Alternatively, include an inline placeholder,
 which will maintain the layout as well as present something to your
 users while they are waiting for the full image to load.
 
 ## Fonts
-When classifying resources to rendering-critical vs non-critical ones,
+When classifying resources as rendering-critical and non-critical,
 fonts sit somewhere in the middle. On the one hand, fonts do not block
-the rendering of the page’s general layout. On the other, in many cases,
-they do block the page’s headers or text from becoming visible,
+the rendering of the page’s general layout. On the other,
+they often do block the page’s headers or text from becoming visible,
 preventing the user from seeing the content.
 
-The default behavior for font loading varies between different browsers,
-where IE and Edge show the user a fallback font while they wait for the
-fonts to download, while others prefer to block font rendering for 3
+The default behavior for font loading varies between browsers:
+IE and Edge show the user a fallback font while they wait for the
+fonts to download; others prefer to block font rendering for three
 seconds, waiting for fonts to arrive, and only then render the fallback
-font. So you could consider the default font loading behavior of most
-browsers to be blocking, or at least “blocking for 3 seconds”, which is
+font. The default font-loading behavior of most
+browsers can be considered to be blocking, then, or at least “blocking for three seconds”, which is
 not ideal.
 
-So, what’s the best way to control your font loading and make sure your
-users don’t find themselves staring for seconds at a fully laid-out page
+What’s the best way to control your font loading and make sure your
+users don’t find themselves staring for seconds at a fully laid out page
 with no text to read?
 
 There are [various strategies][font_strategies] you can take to tackle this, but you have
@@ -1416,40 +1421,43 @@ two major options.
 
 ### Font-display CSS rule
 The `font-display` CSS rules are fairly widely supported (all modern
-browsers except for Edge), and can enable you to control the browser’s
-behavior regarding font loading and modify it to match your preferences:
-If you can live with the Flash of Unstyled Text (FOUT), where the
-fallback fonts are rendered first, and then replaced by the loaded fonts
+browsers except for Edge), and can enable you to control browser
+font-loading behavior and modify it to match your preferences:
+
+* If you can live with the flash of unstyled text (FOUT), where the
+fallback fonts are rendered first and then replaced by the loaded fonts
 once they arrive, `font-display: swap` is probably the way to go.
 
-Alternatively, `font-display: fallback` enables you to make sure that
-a switch from fallback font to loaded font won’t happen too late in the
-page load, and guarantees that if such a switch happens, it will only happen within the first 3 seconds
+* Alternatively, `font-display: fallback` enables you make sure
+a switch from fallback font to loaded font won’t happen too late during
+page load, and guarantees that if such a switch happens, it will only happen within the first three
 of the font loading.
 
-If you can’t live with FOUT, `font-display: optional` makes sure that
+* If you can’t live with FOUT, `font-display: optional` makes sure
 the loaded fonts are displayed only when they are immediately available
-to the browser (e.g. when they are cached from a previous session).
+to the browser (when they are cached from a previous session).
 Otherwise, only the fallback font is displayed.
-Since Edge’s default font loading strategy is not very different from
+
+Since Edge’s default font-loading strategy is not very different from
 “swap”, the lack of support is probably not something you have to worry
 about too much.
 
 One major [caveat][font_reflow] with CSS font-display is that different fonts may
-trigger the swap at different times, so if you have multiple font files
+trigger the swap at different times; if you have multiple font files
 that represent different styles or weights, they may come in at
 different times, resulting in a potentially jarring experience to your
 users.
 
 [font_reflow]: https://www.zachleat.com/web/font-display-reflow/
 
-If this is your case, you may prefer to use…
+If this is your case, you may prefer to use the…
+
 ### The Font Loading API
-The Font Loading API enables you to explicitly load fonts from JS, and
-perform certain actions when they finished loading. As such, if you have
-several font files which need to be rendered together, you can load
-programmatically, and change the CSS rules to apply them (e.g. by adding
-a class on their container) only once all of them finished loading.
+The Font Loading API allows you to explicitly load fonts from JavaScript, and
+perform certain actions when they finish loading. If you have
+several font files that need to be rendered together, you can load
+programmatically and change the CSS rules to apply them (by adding
+a class on their container, for example, or adding the fonts dynamically) only once all of them have finished loading.
 
 
 # Full Bandwidth Pipe
@@ -1552,17 +1560,17 @@ non-critical content, but turns out that on the web there a third class
 of content: unneeded content.
 
 ## Don't download unused content
-Due to the use of CSS frameworks, large JS libraries, as well as simple code churn, content on the web tends of contain a large percentage of unused code.
+Due to the use of CSS frameworks, large JavaScript libraries, as well as simple code churn, content on the web tends of contain a large percentage of unused code.
 There are many tools today that can help you spot such unused code
 as part of your build process and weed it out.
 
 [Puppeteer coverage API][Puppeteer] enables you to detect such unused
 content and take action on it. It is very easy to use such tools to see
-how much unused CSS and JS you have on your page. It may not be as
+how much unused CSS and JavaScript you have on your page. It may not be as
 trivial to take action on those unused parts and delete them
 automatically, and I'm not aware of current tools which do that.
 But at the very least you should be able to use these tools to monitor
-the amount of unused JS in your application.
+the amount of unused JavaScript in your application.
 
 [puppeteer]: https://github.com/GoogleChrome/puppeteer/blob/master/docs/api.md#class-coverage
 
@@ -1613,9 +1621,9 @@ For JavaScript, extra code also means extra parsing costs. Some
 JavaScript engines cache their parsing products, making processing
 faster in repeat views. For example, V8 uses [code
 caching][code_caching] to make sure
-JS bytecode can be reused in repeat views, reducing parsing costs there. 
-But that may not be true for all JS engines and
-all JS content (as some content may not be eligible for caching). There
+JavaScript bytecode can be reused in repeat views, reducing parsing costs there. 
+But that may not be true for all JavaScript engines and
+all JavaScript content (as some content may not be eligible for caching). There
 are also no guarantees that the cached parsing products won’t get
 evicted before your content does.
 
@@ -1623,7 +1631,7 @@ evicted before your content does.
 
 <!-- TODO: Make sure that's actually true -->
 
-Finally, unused CSS and JS code increases your site's memory footprint
+Finally, unused CSS and JavaScript code increases your site's memory footprint
 for no good reason, as the browser has to maintain the unused rules and
 code in memory for as long as your site is in memory. In low-memory
 environments (e.g. mobile) that could mean the difference between your
@@ -1655,7 +1663,7 @@ Two things are worth noting regarding that:
 * These efforts are both still in their early phases, so it may take a
   while before you can take advantage of them.
 * Compressing the bytes over the network doesn't prevent us from
-  paying up their parsing costs at runtime, as the parse time of JS is
+  paying up their parsing costs at runtime, as the parse time of JavaScript is
 related to its uncompressed size. So even if we could use it
 today, this should only be a fallback in cases where the removal of
 unused code is not feasible.
@@ -1692,8 +1700,8 @@ bundling still has a role:
 * HTTP/2 does not have cross-stream compression contexts (for security
   reasons), which means that each resource is compressed on its own. But
 small files compress with a significantly lower ratio than large ones.
-So if you have many small JS files in your application, you'll get much
-larger overall JS payload over the network if you would bundle your
+So if you have many small JavaScript files in your application, you'll get much
+larger overall JavaScript payload over the network if you would bundle your
 small files into a single one.
 * Even though HTTP/2 has no extra cost per request over the network,
   that doesn't mean that requests have no extra overhead in the browser.
@@ -1701,7 +1709,7 @@ At least in Chrome, that overhead can make a difference when added up
 among hundreds of requests.
 
 So, bundling still has a role and can overall improve performance if
-your site has many different JS or CSS resources. But, currently,
+your site has many different JavaScript or CSS resources. But, currently,
 bundling also has a cost. We've talked earlier about the fact that both
 JavaScript and CSS are resources that must be executed in their
 entirety. When we bundle resources together, we effectively tell the
@@ -1712,10 +1720,10 @@ executing until all of them were downloaded and parsed.
 Chrome 66 introduced a [streaming parser][stream_parsing] for JavaScript so it can be
 parsed on a background thread as it is being downloaded.
 That means that at
-least in some cases, the "all or nothing" approach to JS is slightly
+least in some cases, the "all or nothing" approach to JavaScript is slightly
 mitigated. So even though large bundles still have to be executed as a
 single unit, they may be parsed progressively.
-Other browsers don’t yet have streamed parsing for JS, but at least some
+Other browsers don’t yet have streamed parsing for JavaScript, but at least some
 of them are actively looking into that area.
 </aside>
 
@@ -2028,7 +2036,7 @@ those resources down in 2 different ways:
 
 Which of these approaches would be a better one?
 
-When talking about JS or CSS resources, the answer is obvious. Since
+When talking about JavaScript or CSS resources, the answer is obvious. Since
 these resources need to be processed in their entirety before they can
 be executed, sending the full files would mean we can execute each of
 those files earlier, resulting in faster overall experience.
@@ -2079,7 +2087,7 @@ these cookies will be lost when rewriting the URLs.
 Another alternative to avoid contention is to time-shift the
 non-critical third party requests to a point in time where they will not
 contend with your main content. That may look very much like the
-lazy-loading of non-critical JS content, but potentially delayed even
+lazy-loading of non-critical JavaScript content, but potentially delayed even
 further, to avoid contention with your own non-critical content.
 
 ### Use connection coalescing to your advantage.
@@ -2404,14 +2412,14 @@ things to focus on to improve your site's performance:
     - Preload - make sure your resources are early discovered by the browser.
 * Load code *when* you need it
     - Progressive CSS loading - Load styles for your out-of-viewport content at the point where they are needed.
-    - Non-blocking JS loading - Make sure that your JS is loaded in a non-blocking manner.
+    - Non-blocking JavaScript loading - Make sure that your JavaScript is loaded in a non-blocking manner.
     your users' CPU.
     - Lazy load images - Use one of the various lazy loading libraries (preferably one that uses IntersectionObservers) to lazy load your out-of-viewport images.
     - Use smart font loading strategies - Prefer FOUT and use `font-display: swap` or the Font Loading API to achieve it.
 * Load less
-    - Avoid sending unused code - use code coverage tools to remove dead code from your JS and CSS bundles.
-    - Avoid JS reliant experience - Prefer your user's experience over your own and use a small amount of non-blocking JS to avoid bogging down
-    - Brotli - Use brotli compression to significantly reduce the size of your static JS/CSS files.
+    - Avoid sending unused code - use code coverage tools to remove dead code from your JavaScript and CSS bundles.
+    - Avoid JavaScript reliant experience - Prefer your user's experience over your own and use a small amount of non-blocking JavaScript to avoid bogging down
+    - Brotli - Use brotli compression to significantly reduce the size of your static JavaScript/CSS files.
     - Use Responsive images and Client Hints to make sure you're not sending unnecessary image data.
     - Subset you fonts to avoid sending unused character data.
 * Avoid bandwidth contention between your resources
@@ -2452,7 +2460,7 @@ improved prioritization.
 * The third party ecosystem will be significantly more amenable to being
   iframed for increased performance and security.
 * The framework ecosystem will make heavy use of workers, delegating
-  more JS work off-main-thread.
+  more JavaScript work off-main-thread.
 * Feature policy combined with iframes third parties will enable
   developers to take back control over their user's experience.
 * Lazy loading non-critical content will become significantly easier
@@ -2463,12 +2471,12 @@ improved prioritization.
 * JavaScript resources will be bundled using WebPackages, enabling
   improved compression, caching granularity, and (combined with Cache
 Digests) avoiding to send down resources already in the browser's cache.
-* Common build processes will also help make sure completely unused JS
+* Common build processes will also help make sure completely unused JavaScript
   and CSS is never sent down to the browser, and rarely/late used code
 is loaded later on.
 * The combination of compression APIs and Service Workers will enable
   off-the-shelf delta compression solutions that will significantly
-reduce the amount of framework JS and CSS users have to download.
+reduce the amount of framework JavaScript and CSS users have to download.
 * Client Hints with network quality estimations will simplify server side
   implementations of adaptive congestion control algorithms. QUIC wlll
 make it simpler to change the congestion window after receiving the
