@@ -31,7 +31,7 @@ remain responsive to user input.
 * Contention avoidance - Bandwidth and CPU contention should be avoided
 between low priority content and high priority, as well as between
 same priority resources which need to be processed in their entirety.
-* Minimize latency impact - Use a Content Delivery Netwotk (CDN) and improve content caching at the
+* Minimize latency impact - Use a content delivery network (CDN) and improve content caching at the
   client.
 * Control - Make sure that content and in particular third party content
 does not get in the way of your user's experience.
@@ -72,9 +72,10 @@ some of the other resources required for the full site experience.
 
 So what happens when the browser navigates to a new page?
 
-First, the browser starts the connection establishment process we
-discussed earlier, with DNS, TCP and TLS (which often costs us around 4
-round-trip time). Then, it sends out a GET request for the HTML itself, and
+First, the browser starts the connection establishment process, using
+DNS to know which host to connect to, and then establishing TCP and TLS
+connections to that host. That process usually takes around 4
+round-trip times. Then, it sends out a GET request for the HTML itself, and
 receives an initial buffer of the response from the server.
 The size of that response depends both on the HTML size and the initial
 congestion window of the server. A typical value for that is window is
@@ -277,13 +278,13 @@ RTTs before the server is able to start delivering useful data.
 ![](media/dnstcptls.svg)
 
 Protocol advancements such as Quick UDP Internet Connection (QUIC) on the one hand and TCP-Fast-Open
-(TFO) and TLS1.3 on the other, made most of that obsolete. These protocols
+(TFO) and TLS 1.3 on the other, made most of that obsolete. These protocols
 rely on previously established connections to keep cryptographic
 "cookies" that remember past sessions, and allow previous sessions to be
 recreated instantaneously.
 There are still many caveats and many scenarios where the connection
 will take more than a single RTT to be established, but generally, using those cutting edge protocols
-will mean there are very few RTTs which get in the way of delivering content to our users.
+will mean there are very few RTTs to get in the way of delivering content to our users.
 
 <aside>
 
@@ -337,8 +338,7 @@ reliable transport, which means when a packet is lost, it has to be
 successfully retransmitted before the subsequent packets can be delivered
 to higher layers. However, TCP guarantees reliable delivery for the
 entire connection, while QUIC guarantees reliable delivery *per
-request-response stream*. That means that if a packet is lost in QUIC,
-it will only delay the affected resources, while HTTP/2 over TCP will
+request-response stream*. That means a packet loss in QUIC will only delay the affected resources, while one in HTTP/2 over TCP will
 delay *all resources*.
 * Tighter prioritization - Because QUIC is implemented over UDP, the
   transport layer logic and queues are all implemented in the server in userland code, rather than in the kernel, where TCP's logic is implemented.
@@ -378,18 +378,18 @@ encountered any resources on that host just yet.
 ### Adaptive congestion window
 When the server starts sending data to the user, it doesn't know how much bandwidth it will have for that purpose. It can't be sure what
 amount of data will overwhelm the network and cause congestion. Since
-the implications of congestion can be severe, a mechanism called _Slow Start_ was developed in order to make sure it does not happen.
+the implications of congestion can be severe, a mechanism called _slow start_ was developed to make sure it does not happen.
 It enables the server to gradually discover the connection's limits, by starting to send a small amount of packets, and increasing that exponentially.
-But due to its nature, slow start also limits us in the amount of data that we can initially send on a new connection.
+But owing to its nature, slow start also limits the amount of data that we can initially send on a new connection.
 
 <aside>
 #### Congestion collapse
 The reason slow start is needed is to avoid congestion collapse.
 
 Let's imagine a situation where the server is sending down significantly more packets
-than the network can effectively deliver or buffer. That means that many
+than the network can effectively deliver or buffer. Many
 or even most of these packets will get dropped. And what do reliable
-protocols do when packets are dropped? They retransmit them!!
+protocols do when packets are dropped? They retransmit them!
 
 So now the server is trying to send all the retransmits for the dropped
 packets, but they are *still* more than the network can handle, so they
@@ -398,8 +398,8 @@ get dropped.
 What does the helpful transport layer do? You guessed it, retransmit
 again.
 
-That process happens over and over, and ends up with a network which
-passes along mostly retransmits and very little useful information.
+That process happens over and over, and we end up with a network
+passing along mostly retransmits and very little useful information.
 
 This is the reason it pays off to be conservative, start with a small
 number of packets and go up from there.
@@ -407,41 +407,40 @@ number of packets and go up from there.
 
 In the past the recommended amount of packets for the initial congestion
 window - the initial amount of packets the server can send on a fresh
-connection - was [somewhere between 2 and 4, depending on their
+connection - was [somewhere between two and four, depending on their
 size][initcwnd_2].
 
 [initcwnd_2]: https://tools.ietf.org/html/rfc3390
 
 In 2013 a group of researchers at Google ran experiments all over
 the world with different congestion windows and [reached the
-conclusion][initcwnd_10] that this value can be lifted to 10.
+conclusion][initcwnd_10] that this value can be lifted to ten.
 
 [initcwnd_10]: https://tools.ietf.org/html/rfc6928
 
-If you're familiar with the "send all your critical content in the first
-14KB of your HTML" rule, that's where this rule is coming from. Since
-the maximum Ethernet packet size is 1460 bytes of payload, 10 packets
-(or ~14KB) can be delivered during that first initial congestion window.
+If you're familiar with the rule stating you should send all critical content in the first
+14 KB of HTML, that's the rule's origin. Since
+the maximum ethernet packet size is 1,460 bytes of payload, 10 packets
+(or approximately 14 KB) can be delivered during that first initial congestion window.
 Those packets need to include both the headers and the critical content
 payload if you want your site to reach first paint without requiring
 extra round-trips.
 
-However, in many cases the network over which we're connecting can
-handle significantly more than that, and theoretically the server could
-have known that in some cases (since they've seen this browser over that
-network before, etc).
+However, in many cases the network can
+handle significantly more than that. The server may know that when the
+connection is over a network it has seen before.
 
 The browser itself can also, in many cases, take an educated guess
-regarding the quality of the network it's on. It can do that based on
-the network radio type, signal strength, as well as past browsing
+regarding the quality of the network it's on. It can base that on
+the network radio type and signal strength, as well as past browsing
 sessions on that network.
 
 Browsers already expose network information to JavaScript through the [Network Information API][netinfo], and there's work underway
 to expose the same information using Client-Hints. That will enable
-servers to modify their initial congestion window based on the [Effective
-Connection Type][ect] and adapt it according to the browser's estimate.
+servers to modify their initial congestion window based on the [effective
+connection type][ect] and adapt it according to the browser's estimate.
 That would help to significantly minimize the time it takes the
-connection to converge onto its final congestion window value.
+connection to converge on its final congestion window value.
 
 [netinfo]: https://wicg.github.io/netinfo/
 
@@ -455,195 +454,190 @@ congestion window for an in-flight connection in TCP implementations today.
 
 How can you make sure that you're minimizing your protocol overhead?
 That depends on your server's network stack.
-Moving to QUIC, TLS/1.3 or TFO may require upgrading your server's network stack, or
-turning on those capabilities in its configuration. Alternatively, you can use a Content-Delivery Network (or CDN) which supports those protocols, and have servers which sit between your users and your servers.
+Moving to QUIC, TLS 1.3 or TFO may require upgrading your server's network stack, or
+turning on those capabilities in its configuration. Alternatively, you can use a CDN that supports those protocols, and have servers which sit between your users and your servers.
 
 These protocol enhancements are all relatively new, so support may not be widespread at the moment.
-QUIC specifically is still not standardized, so it can be hard to self
-deploy it, as that would require frequent updates as the Chrome
+QUIC, specifically, is still not standardized, so it can be hard to self-deploy, since that would require frequent updates as the Chrome
 implementation evolves.
-At the same time, keeping an eye for these protocols and taking
+At the same time, keeping an eye on these protocols and taking
 advantage of them once they become available can be beneficial.
 
-Alternatively, it is easier to turn on preconnect for your critical third party hosts,
+Alternatively, it is easier to turn on preconnect for your critical third-party hosts,
 by adding `<link rel=preconnect href=example.com>` to your markup. One
 caveat here is that preconnects are cheap, but not free. Some browsers
-have a limited number of DNS requests that can be up in the air (e.g.
-Chrome limits pending DNS requests to 6).
+have a limited number of DNS requests that can be up in the air (Chrome limits pending DNS requests to six, for instance).
 
-Preconnecting to non-critical hosts can use up your quota, and prevent
-connections to other hosts from taking place. So only preconnect to
+Preconnecting to non-critical hosts can use up your quota and prevent
+connections to other hosts from taking place. Only preconnect to
 hosts your browser would need to preconnect to, and prefer to do that
 roughly in the same order as the browser would use those connections.
 
 When using preconnect, you also need to pay close attention to the
 credentials mode of the resources will use that connection. Since Chrome
 uses different connections for different credential mode requests, you
-need to let the browser know which connection “type” it needs to
-preconnect to. You can do that with the `crossorigin` attribute on
+need to let the browser know which connection type it needs to
+preconnect to. You can do that with the `crossorigin` attribute on the
 preconnect `<link>` element.
 
-And as far as adaptive congestion window goes, that requires some more
+And as far as the adaptive congestion window goes, that requires some more
 server-side smarts, but hopefully with the advent of network info in
-Client-Hints and QUIC, one can imagine servers implementing that scheme.
+Client Hints and QUIC, we can imagine servers implementing that scheme.
 
 ## Server-side processing
-The other hurdle to overcome when it comes to early delivery is server
-side processing. HTML content is often dynamic and as such, generated on
+The other hurdle to overcome when it comes to early delivery is server-side processing. HTML content is often dynamic and, as such, generated on
 the server rather than simply delivered by it. The logic for its generation
-can be complex, may involve database access and can also include
+can be complex, might involve database access, and can also include
 different APIs from different services. That processing is also often
 done using interpreted languages such as Python and Ruby, which are not
 always the fastest choice, at least not by default.
 
 As a result, generating the HTML once a request has hit our servers is a
-time consuming activity, and one which wastes our users' time. Worse
+time-consuming activity, and one which wastes our users' time. Worse
 than that, it is time spent before the browser can do anything to
 advance the loading of the page.
 
 ### Early Flush
-One way to avoid forcing our users to wait on our potentially slow
+One way to avoid forcing our users to wait for our potentially slow
 database responses is to flush the HTML's `<head>` early on. As part of the HTML
-generation process we can make sure that once the `<head>` is ready, it will be sent down to the browser, enabling it
-to start processing it, issue the requests defined in it and
+generation process we can make sure that once the `<head>` is ready, it will be sent to the browser, enabling it
+to start processing it, issue the requests defined in it, and
 create the relevant DOM tree.
 
-However that is not always feasible in practice. Depending on your
-application logic, there are a few problematic aspects about early
-flushing your HTML content:
+However, that is not always feasible in practice. Depending on your
+application logic, there are a few problematic aspects about
+flushing your HTML content early.
 
 #### Committing an HTTP response code
 
-If the eventual response will not be a `200 OK` one (e.g. a 404 or a 500 error if the
-server failed to find the required info in the database), you would have
-to redirect the content using JavaScript. Since not all search crawlers
-support JavaScript, it can mean that such "eventual error" pages can now
-find themselves in search results. It also means we need to bake that "eventual error" logic into our
-client side application logic, in order to make sure the negative user impact of
+When flushing HTML content early, you are committing to a certain HTTP response code, typically 200 OK. But the eventual response may end up having a different status code,
+perhaps a 404 or a 500 error if the server failed to find the required information in the database. In such a case, you would have
+to redirect or modify the content using JavaScript, to show the error. But because that content was served with a 200 response code, search engines may not recognize it as error content, and that error content may find itself
+in search results. It also means we need to bake that eventual error logic into our
+client-side application logic, in order to make sure the negative user impact of
 that redirection is as unnoticeable as it can be.
 
 #### Dynamic response header logic
 Any dynamic logic applied to the response headers must be applied
-  ahead of time. Header based cookies, Content-Security-Policy directives and other header-based instructions  have to be
-determined before that first content flush happens. In some cases that
-can delay early flushing of content, in others it can prevent it
-entirely. (e.g. if the cookie that is supposed to be set is itself
-coming from a database)
+ahead of time. Header-based cookies, Content Security Policy directives, and other header-based instructions have to be
+determined before the first content flush. In some cases that
+can delay early flushing of content; in others it can prevent it
+entirely (for example, if the cookie that is supposed to be set
+comes from a database).
 
 Alternatively, you can try to build in application logic that converts
-these header based browser instructions into content-based ones (e.g.
-set the cookies using JS, set some headers using meta tags as part of
-the content itself, etc.).
+these header-based browser instructions into content-based ones (like
+setting the cookies using JS, or setting some headers using meta tags as part of
+the content itself).
 
 #### Compression buffering
-Even if your application logic enables you early flushing of your HTML's head,
-misguided gzip or brotli settings can result in undesired buffering. When done wrong, they can
+Even if your application logic enables early flushing of your HTML's `<head>`,
+misguided gzip or Brotli settings can result in undesired buffering. When done wrong, they can
 nullify your attempts to send content early to the browser. Gzip and
-brotli have various settings which control the trade-off between
-buffering content and compression ratio - the more buffering, the better
+Brotli have various settings to control the trade-off between
+buffering content and compression ratio: the more buffering, the better
 compression ratio these algorithms can achieve, but at the cost of extra
 delays. When flushing early, you should make sure that your server (and
-whatever other component in your infrastructure which is applying
-compression) is set accordingly.
+whatever other components applying compression in your infrastructure) is set accordingly.
 
-For [gzip][gzip_manual], its default buffering mode is `Z_NO_FLUSH`, which
-means it is buffering data until it considers it has enough to create
+[Gzip][gzip_manual]'s default buffering mode is `Z_NO_FLUSH`, which
+means it buffers data until it considers it has enough to create
 ideal compression output. Setting it to `Z_SYNC_FLUSH` can ensure that
 every input buffer creates an output buffer, trading off some
 compression ratio for speed.
 
-If you're using on-the-fly brotli to compress your content, there's a
-similar flag in the streaming brotli encoder, called
-[`BROTLI_OPERATION_FLUSH`][brotli_flush]. You should use it instead of
+If you're using on-the-fly Brotli to compress your content, there's a
+similar flag in the streaming Brotli encoder, called
+[`BROTLI_OPERATION_FLUSH`][brotli_flush], you should use instead of
 the default.
 
 [gzip_manual]: https://www.zlib.net/manual.html
 [brotli_flush]: https://github.com/google/brotli/blob/1e7ea1d8e61b7cd51149a2dd491bc86ff8ef460c/c/include/brotli/encode.h#L90
 
 ### Server Push
-Another way to work around slow server-side processing is the use an
-HTTP/2 (or H2, for short) mechanism called _Server Push_ in order to load critical resources
-while the HTML is being generated.
+Another way to work around slow server-side processing is to use an
+HTTP/2 (or H2 for short) mechanism called _Server Push_ to load critical resources
+while the HTML is generated.
 
-That often means that by the time the HTML was generated and started to
+That often means by the time the HTML is generated and starting to
 be sent to the browser, the browser already has all the critical
 resources in its cache.
-Furthermore, sending of those critical resources start the TCP
-slow-start process earlier and ramps up TCP's congestion window. When
+Furthermore, sending those critical resources starts the TCP
+slow start process earlier and ramps up TCP's congestion window. When
 the HTML is finally ready, a significantly larger part of it can be sent down.
 <figure>
 ![](media/page_loading_nopush.svg)
-<figcaption>Loading process without push - HTML download and slow start
+<figcaption>Loading process without Push: HTML download and slow start
 kick off only after HTML is generated.</figcaption>
 </figure>
 <figure>
 ![](media/page_loading_push.svg)
-<figcaption>Loading process with push - critical resources and slow start
-kick off before HTML is generated, so once it is ready, it can be sent
+<figcaption>Loading process with Push: critical resources and slow start
+kick off before HTML is generated, so once it is ready it can be sent
 down in a single RTT.</figcaption>
 </figure>
 
 One of the biggest problems with Server Push today is that the server
-has no visibility into the browser's cache state, so when done naively,
-the server is likely to send down resources that the browser already has
-in its cache.
-A recent proposal called [Cache Digests][digests] is aiming to solve that, by
+cannot see into the browser's cache state, so when done naively
+the server is likely to send down resources that the browser already
+has.
+
+A recent proposal called [Cache Digests][digests] aims to solve that, by
 sending the server a condensed list of all the resources the browser has
 in its cache for that particular host, enabling the server to take that
 into consideration before pushing down resources.
 
 [digests]: https://tools.ietf.org/html/draft-ietf-httpbis-cache-digest-04
 
-In practice, because of the caching issues, you don't want to use server
-push naively.
-One easy way to implement server push is to make sure it's only in
+In practice, because of the caching issues, you don't want to use Server
+Push naively.
+One easy way to implement Server Push is to make sure it's only in
 effect on your landing pages, and only working for first views.
 You can use a cookie to distinguish first views from repeat visits, and
 use the request's `Accept` headers to distinguish navigation requests
 from subresource ones.
 
-Actually triggering server push varies per server: some servers use Link
+Actually triggering Server Push varies per server: some servers use Link
 preload headers as a signal to push resources. The problem with that
-approach is that it doesn't take advantage of the server's "think time".
-An alternative approach of configuring the server to issue pushes based
+approach is it doesn't take advantage of the server's think time.
+Alternatively, configuring the server to issue pushes based
 on the arriving requests can prove more beneficial, as it triggers the
 push earlier.
 
-If you want to go all in, there's also a [Service Worker based
+If you want to go all in, there's also a [service worker-based
 implementation of Cache Digests][cachedigestsjs], which can help you
-deliver push on all your pages today, without waiting for Cache Digests
+deliver Push on all your pages today, without waiting for Cache Digests
 to be standardized and implemented.
 
 [cachedigestsjs]: https://github.com/h2o/cache-digest.js/blob/master/README.md
 
 ### Early Hints
 Yet another alternative is a newly adopted HTTP standard header called
-[Early Hints][early_hints]. (assigned with the response number 103)
-That header enables the server to send an initial set of headers that
-will be indications regarding the resources that a browser should load,
-while still not "locking down" the final response code.
-
+[Early Hints][early_hints] (assigned with the response number 103).
+This header enables the server to send an initial set of headers that
+will be indications regarding the resources a browser should load,
+while still not locking down the final response code.
 That would enable servers to send down Link preconnect and preload
 headers in order to tell the browser as early as possible which
 hosts to connect to and which resources to start downloading.
 
 The main downside here is that Early Hints is not yet implemented by any
-browser, and their implementation may not be trivial. Because the hints
+browser, and its implementation may not be trivial. Because the hints
 are received before the final HTTP response, the browser doesn't
 necessarily have in place the rendering engine process that will end up
 processing that document. So supporting Early Hints would require
-supporting a new kind of requests that are not necessarily triggered by
+supporting a new kind of request that is not necessarily triggered by
 the rendering engine, and potentially a new kind of cache that will keep
-these resources around until the rendering engine is set up and received
+these resources around until the rendering engine is set up and has received
 the final headers and document.
 
 [early_hints]: https://tools.ietf.org/html/rfc8297
 
 ### Prefetch
-Finally, there's also the option of working around the server's "think
-time" by kicking it off significantly earlier, before the user even expressed
+Finally, there's also the option of working around the server's think
+time by kicking it off significantly earlier, before the user has even expressed
 explicit interest in the page.
-Browser use past user activity in order to predict where the use is
+Browsers use past user activity to predict where the user is
 likely to go next and prefetch those pages while they are typing in the
 address, or even before that.
 
@@ -655,49 +649,48 @@ Those fetches remain alive when the user actually navigates to the next
 page, and remain in the cache for a limited amount of time even if the
 resource is not cacheable.
 
-If you have a good-enough guess of where your users will be heading
+If you make a reasonable guess of where your users will head
 next, prefetch can be a good way to make sure that when they do, the
 browser will be one step ahead of them.
 
 # Priorities
-Since the download process of a web page is comprised of downloading
-dozens (and sometimes more) resources, properly managing the download priority of these
+Since the download process of a web page comprises downloading
+dozens of resources (and sometimes more), properly managing the download priority of these
 resources is extremely important. We discussed the resource loading
-process earlier. A part of that process is determining each resource’s
+process earlier. Part of that process is determining each resource’s
 priority.
 
 
 ## Request priorities
 
-Once the browser detected a resource that it needs to load, it kicks off
+Once the browser detects a resource that it needs to load, it kicks off
 a request that will fetch that resource.
-We've seen earlier that some requests may be more important than
+We saw earlier that some requests may be more important than
 others. Resources that are in the critical path should ideally reach
-the browser before ones that are not in the critical path and that are
+the browser before those that are not, and that are
 required at a later phase of the rendering process.
 
-How do browsers make sure that these critical requests get higher
-priority over less-critical ones?
+How do browsers make sure these critical requests get higher
+priority over less critical ones?
 
 We'll talk about more sophisticated priority schemes later, but if we
 look at HTTP/1.X, the only method for browsers to control the priority
-of a specific request is by... not sending it up to the server in the
-first place. Browsers have a request queue of requests that were discovered
+of a specific request is by… not sending it up to the server in the
+first place. Browsers have a queue of requests that were discovered
 but should not yet be sent up to the server because there are more
-critical resources in flight, and we don't want the less-critical ones
+critical resources in flight, and we don't want the less critical ones
 to contend on bandwidth with them.
 
-Different browsers use different schemes there: some hold off all
-non-critical requests while critical ones are in flights, while other
+Different browsers use different schemes: some hold off all
+non-critical requests while critical ones are in progress, while others
 let through some non-critical requests to go out in parallel to critical
 ones, to improve image performance.
 
-Browsers assign priorities to resources according to their "type" (more strictly speaking, according to their `Request.destination`).
+Browsers assign priorities to resources according to their type (strictly speaking, according to their `Request.destination`).
 In the priority queue model, they make sure that a request doesn't go
-out to the network before all requests from all priorities above it were
-not sent out to the network.
+out to the network before higher-priority requests.
 
-Typically, browsers will assign higher priorities to rendering-critical resources. In Chrome that translates into the following order:
+Typically, browsers will assign higher priorities to rendering-critical resources. In Chrome, that translates into the following order:
 HTML, CSS, fonts, JS, in-viewport images, out-of-viewport images.
 Chrome also follows some further heuristics which go beyond what other
 browsers typically do:
@@ -705,43 +698,43 @@ browsers typically do:
 * Blocking scripts at the bottom of the page
   are of lower priority than blocking scripts at the top of the
 page.
-* Async and defer scripts are of even lower priority
+* Async and defer scripts are of even lower priority.
 * Preloaded fonts get slightly lower priority than late-discovered
-  fonts, to prevent them contending with render blocking resources.
+  fonts to prevent them contending with render blocking resources.
 
 The purpose of these heuristics is to try to infer the developer's
 intent from various existing signals: the location of the resource on
-the page, whether it is a blocking resource, etc.
-However, that approach has its limits, and it's hard for the developer
+the page, whether it is a blocking resource, and so on.
+However, such an approach has its limits, and it's hard for developers
 to convey their real intent to the browser.
 
-Which is why we need...
+Which is why we need…
 
 ## Priority Hints
 We've seen before that browsers assign different priorities to different
 resource types based on various heuristics. But as much as these
 heuristics have done well over the years to optimize content download,
-they are not accurate in all cases, and are based on indirect
+they are not always accurate, and are based on indirect
 indications from the developer regarding which resources are most
 important for their site. The [Priority Hints][priority_hints] proposal
-is an attempt to make those developer indications explicit, and let the
-browser take action based on them.
+is an attempt to make those indications explicit, and let
+browsers take action based on them.
 
 The proposal aims for developers to include new "importance" attributes
-to various resource downloading HTML elements, which will indicate
+to various resource-downloading HTML elements, which will indicate
 whether the resource's priority should be upgraded or downgraded.
 
-That would give browsers a clear signal on how to prioritize a resource
-vs. its counterparts, without binding them to direct developer
-instructions, which may not be accurate (e.g. a blocking script with
-"low" importance is still blocking layout, and therefore should not have
-its priority downgraded).
+That would clearly signal to browsers how to prioritize a resource
+against its counterparts, without binding them to direct developer
+instructions, which may not be accurate; for example, a blocking script with
+"low" importance attribute value is still blocking layout, and therefore should not have
+its priority downgraded.
 
-At the time of this writing, the proposal is to add an `importance`
+At the time of writing, the proposal is to add an `importance`
 attribute on `<link>`, `<img>`, `<script>` and `<iframe>` elements, with
 possible values of `low` and `high`. The hints will enable developers to
-inform the browser about low priority resources (e.g. non-critical JS)
-as well as high priority ones (e.g. hero images).
+inform the browser about low priority resources (such as non-critical JavaScript)
+as well as high-priority ones (like hero images).
 
 A similar parameter will also be added to the `fetch()` API options,
 enabling setting the hint on dynamically generated requests.
@@ -752,131 +745,124 @@ enabling setting the hint on dynamically generated requests.
 
 One of the assumptions behind HTTP/2's prioritization scheme is that
 every resource has its priority. And that assumption works well for
-resources which have to be processed as a whole such as CSS and
-JavaScript. These resources are either critical or not, in their
+resources that have to be processed as a whole, such as CSS and
+JavaScript. Such resources are either critical or not, in their
 entirety.
 
 However, for streaming resource types, such as HTML and images, that
 assumption doesn't necessarily hold.
 
-If we consider HTML, its first few bytes which contain the `<head>`,
-enable the document to be committed and the critical resources to be
+If we consider HTML, its first few bytes, which contain the `<head>`,
+enable the document to be committed, and the critical resources to be
 requested are of the highest priority. At the same time, especially for
-long HTML files which go beyond the initial viewport, the last few bytes
-which are required to finish constructing the DOM, but are not required
+long HTML files that go beyond the initial viewport, the last few bytes
+required to finish constructing the DOM, but not required
 for the initial rendering, are of lower priority.
 
-Similarly for images, the first bytes which contain the image's
-dimension are extremely important as they enable the browser the reserve
-space for the image and enable layout to
-stabilize.
-For progressive images, the first byte range which contain the
-first scan are significantly more important than the last bytes of the
+Similarly, the first bytes of images, which contain the image's
+dimensions are extremely important as they enable browsers to reserve
+space for the image and allow layout to stabilize.
+For progressive images, the byte range containing the
+first scan is significantly more important than the last bytes of the
 last scan. The former enable the browser to display the rough image (in
 low quality), while the latter provides small quality improvements.
 
-So download schemes which would enable us to download the first scans of
+So download schemes that would enable us to download the first scans of
 all in-viewport images provide a significantly better user experience
-than ones which download images one-by-one.
+than ones which download images one by one.
 
 ![](media/progressive_download.png)
 
 <!-- Credit John Mellor -->
 
-Currently HTTP/2 priorities don't enable us to include such
-prioritization schemes into the protocol.
-And even if it did, there's currently no way for the browser to know
-the exact byte ranges of the various images' before it started
-downloading them.
+Currently, HTTP/2 priorities don't enable us to include such
+prioritization schemes in the protocol.
+And even if it did, there's currently no way for browsers to know
+the exact byte ranges of the various images before starting to
+download them.
 But that's potentially something we could improve in the future.
-
-In the meantime, smart servers could do that by overriding the
+In the meantime, smart servers could do it by overriding the
 priorities sent by the browser.
 
 # Delivering the right content at the right time
-Since the browser discovers the content progressively and content has
-different priorities, it is important to make sure that the application
-including the content does so in a way such that the right content is
-loaded at the right time, and critical and non-critical content are not
+Since browsers discover content progressively, and content has
+different priorities, it is important to make sure the application
+including the content loads the right content at the right time, and critical and non-critical content are not
 mixed together.
 
 ## CSS - critical and non-critical
-Loading only the critical bits of your CSS upfront, while lazy loading
-the later-needed bits can be one of the most impactful optimizations
-your can apply to speed up your first paint and first meaningful paint
+Loading only the critical parts of your CSS up front, while lazy-loading
+the rest can be one of the highest impact optimizations
+you can apply to speed up your first paint and first meaningful paint
 rendering metrics.
 
 Your CSS can probably be divided into three parts:
 
-* Critical CSS - CSS required to style elements which are present in
+* Critical CSS: CSS required to style elements present in
   the initial viewport.
-* Non-critical CSS - CSS required to style elements outside of the
+* Non-critical CSS: CSS required to style elements outside of the
   initial viewport or in other parts of your site.
-* Unused CSS - CSS rules which are not used anywhere on your site.
+* Unused CSS: CSS rules not used anywhere on your site.
 
 With the advent of front-end CSS frameworks, such as Bootstrap, many
 sites are downloading significantly more CSS than they actually use.
-More often than not, they are loading it upfront, by simply add `<link
-rel=stylesheet>` tags into their markup.
+More often than not, they are loading it up front, by simply adding `<link
+rel="stylesheet">` tags into their markup.
 
 When the browser's preloader sees such tags, or when the equivalent
 elements get added to the browser's DOM tree, this CSS is downloaded at
 a high priority as it is considered critical.
 
-In terms of processing, since CSS is applied in a cascaded fashion,
-before it can be processed to calculate the page's styles, all the CSS
+Because of the cascade, before it can be processed to calculate the page's styles, the complete CSS
 code needs to be parsed and taken into account. That includes not just
 the CSS from a single file, but from all of your included CSS files - at
-least the ones in your document `<head>`.
+least the ones in your document's `<head>`.
+The reason is that any CSS rule down at the bottom of your CSS
+can override any rule at the top of it, so to know which rules
+actually apply, all your CSS has to be processed.
 
-The reason for that is that any CSS rule down at the bottom of your CSS
-can override any rule at the top of it, so in order to know which rules
-actually apply, all of your CSS has to be processed.
+Therefore it is highly recommended that you only deliver upfront your
+critical CSS: the CSS absolutely necessary for your page's initial render.
+All other CSS should be loaded asynchronously, in a way that doesn't
+block rendering.
 
-Therefore it is highly recommended that you will only deliver upfront your
-critical CSS - the CSS absolutely needed for your page's initial render.
-All other CSS should be loaded asynchronously, in a non-render-blocking
-fashion.
-
-And obviously, it's best to avoid sending down CSS you won't need.
+And obviously, it's best to avoid sending down CSS you simply won't need.
 
 ### How to deliver critical CSS
-So how do we deliver this critical CSS? What the best way to send it
-down to the browser?
+What's the best way to send critical CSS to the browser?
 
-Well, the simplest option is simply to include a `<link rel=stylesheet>`
-tag in your markup and let the browser discover that CSS file and
+The simplest option is to include a `<link rel="stylesheet">`
+tag in your markup and let the browser discover the CSS file and
 download it. While that works, it's not the fastest option. The browser
-has to tokenize the HTML is order to start that download, which means an
-extra RTT plus some processing time before that download starts.
+has to tokenize the HTML to start that download, which means an
+extra RTT plus some processing time before it starts.
 
-Another option is to inline that critical CSS into your HTML so that it
-will get delivered as part of the same resource, saving us an RTT.
+Another option is to inline critical CSS into your HTML so it
+will get delivered as part of the same resource, saving an RTT.
 That's a better option, especially if your critical CSS is fairly small.
 At the same time, your caching will suffer. Delivering the CSS inline
-means that you'll be sending it down again and again for every repeat
-visit on every page to your site. If the CSS is small enough it could be
+means you'll be sending it for every repeat
+visit to every page on your site. If the CSS is small enough, it could be
 worth your while, but it's a trade-off you should be aware of.
 
-A third option is to use H2 push in order to deliver critical CSS before your
+A third option is to use H2 Push to deliver critical CSS before your
 HTML even hits the browser.
 
 ### How to deliver non-critical CSS
-So we've covered how to deliver your critical CSS, but how do you
-deliver your non-critical one? We've seen earlier that adding it your
-your HTML as `<link rel=stylesheet>` will cause the browser to think it
+We've seen that adding CSS to your
+your HTML with `<link rel="stylesheet">` causes browsers to think it
 is blocking and hold off rendering until it's fully downloaded and
 processed. How do we avoid that?
 
-#### Using `requestAnimationFrame` as a first paint proxy
-One technique of making sure you don't load any non-critical CSS before the initial page
-renders is to trigger the loading of those CSS only after that render
+#### Using `requestAnimationFrame` as a First-Paint Proxy
+One technique to make sure you don't load any non-critical CSS before the initial page
+render is to trigger the loading of that CSS only after the render
 happens. While there's no direct event that fires when the initial
 render happens, the [first requestAnimationFrame event][first_raf] of the page
-corresponds to that pretty well.
+corresponds to it pretty well.
 
-Loading of CSS at that point will not block the page's
-initial rendering, so its loading will have no negative side effect.
+Loading CSS at that point will not block the page's
+initial rendering, so it will have no negative side effect.
 
 ```
     var loadStyle = () => {
@@ -898,62 +884,63 @@ initial rendering, so its loading will have no negative side effect.
 [first_raf]: https://developers.google.com/speed/docs/insights/OptimizeCSSDelivery
 #### preload
 
-An alternative technique to decouple the CSS's execution from its
-loading is to use `<link rel=preload` is order to trigger the CSS
-loading and only process it and take its rules into account once it's
-loaded. In order to do that, we can take advantage of
-HTMLLinkElement's `load` element.
+An alternative technique to decouple CSS execution from
+loading is to use `<link rel="preload">` to trigger the CSS
+loading, and only process it and take its rules into account once it's
+loaded. To do that, we can take advantage of
+HTMLLinkElement's `load` event.
 
 `<link rel="preload" as="style" href="async_style.css" onload="this.rel='stylesheet'">`
 
 <!-- Credit Scott Jehl for original technique -->
 
-You can also combine the two methods above in order to trigger a
-download of the preload resource, only after the document was painted in
-order to avoid having it contending on bandwidth with more critical
+You can also combine the two methods above to trigger a
+download of the preload resource, only after the document has been painted.
+This avoids having it contend for bandwidth with more critical
 resources.
 
 The downside of these two methods is that the resource will be
-downloaded with high-priority, so it’s running a real risk of contending
+downloaded with high priority, so it runs a real risk of competing 
 with other resources on the page.
 
 #### Inapplicable media attribute
-Another way to trigger an early download of a CSS resource without
+Another way to cause an early download of a CSS resource without
 triggering its execution is to use the `media` attribute of
 `HTMLLinkElement` with the `stylesheet` `rel` attribute.
-Such resources are being downloaded at a lower priority by the browser,
+Such resources are downloaded at a lower priority,
 yet not executed until the download has finished.
 
 An example may look something like this:
-`<link rel=stylesheet href="async_style.css" media="not all" onload="this.media='all'">`
+`<link rel="stylesheet" href="async_style.css" media="not all" onload="this.media='all'">`
 
 #### Progressive CSS loading
 The above methods all work but are not necessarily easy to use, as they
-require extra work in order to load your CSS in a performant way.
+require extra work to load your CSS in a performant way.
 
 What if we could change the way CSS behaves to make it easier to
-progressively load our CSS, and have it only block the rendering of the
+progressively load, and have it only block the rendering of the
 contents below it?
 
-That would enable us to [load our CSS whenever we actually need
-it][link_in_body], and the browser would just do the right thing.
+That would let us [load our CSS whenever we actually need
+it][link_in_body], and browsers would just do the right thing.
 
-Up until recently, that was (more or less) the way Firefox, Safari and
-Edge loaded CSS, but not Chrome. Chrome and other Chromium based
+Up until recently, that was (more or less) the way Firefox, Safari, and
+Edge loaded CSS, but not Chrome. Chrome and other Chromium-based
 browsers blocked the rendering of the entire page as soon as an external
-CSS resource was discovered, even if it was in the body. That meant that
-using that technique would have had a significant performance penalty in
+CSS resource was discovered, even if it was in the `<body>`. That meant
+using this technique would have had a significant performance penalty in
 Chrome.
 
-But starting from Chrome 69, Chrome aligned its behavior. This means
-that developers can now include non-critical CSS, using <link
-rel=stylesheet> tags inside their content, without it having a negative
+But starting from Chrome 69, Chrome aligned its behavior with other
+browsers. Developers can now include non-critical CSS, using `<link
+rel="stylesheet">` tags inside their content, without it having a negative
 impact.
 
-One caveat is that Firefox doesn't always block rendering for in-body
-style sheets, which can result in Flash Of Unstyled Content (or FOUC). A
-way to work around that is to include a non-empty script tag after the
-`<link>` tag. That forces Firefox to block rendering at that point until
+One caveat is that Firefox doesn't always block rendering for
+in-`<body>`
+style sheets, which can result in a flash of unstyled content (or FOUC). A
+way to work around that is to include a non-empty `<script>` tag after the
+`<link>` tag, which forces Firefox to block rendering at that point until
 all styles have finished downloading.
 
 An example of the above would be:
@@ -964,7 +951,7 @@ An example of the above would be:
   </head>
   <body>
   <!-- Critical content -->
-  <link rel=stylesheet href=foo.css>
+  <link rel="stylesheet" href="foo.css">
   <script> </script><!-- Note the space inside the script -->
   <!-- Content which is styled by foo.css -->
   </body>
@@ -979,31 +966,31 @@ partial blocker.
 <!-- Credit Jake Archibald and Pat Meenan for research, technique and implementation -->
 
 #### Which one should I use?
-We discussed 4 different techniques to load CSS, but when should you
-use each one of them?
+We've discussed four techniques to load CSS, but when should you
+use each one?
 
-These techniques differ in the time in which the requests are triggered
+These techniques differ in the time in which requests are triggered,
 as well as in the request’s priority. Also, some of them rely on script
 execution which, some argue, goes against the principles of
 progressive enhancement.
 
-At the end, I believe the easiest and cleanest technique to load
+In the end, I believe the easiest and cleanest technique to load
 non-critical styles that may be needed further down the page is to
-include them as link tags in the body, and have them block only the
+include them as `<link>` tags in the `<body>`, and have them block only the
 content that relies on them.
-If you have styles that are only needed for follow-up pages, you may use
-“inapplicable media” technique, but arguably, `<link rel=prefetch>` may
+If you have styles that are needed only for follow-up pages, you could use
+the inapplicable media technique, but arguably `<link rel="prefetch">` may
 be a better tool for the job.
 
 ## JS - critical and non-critical
-Similarly to CSS, blocking JavaScript also holds off rendering. Unlike
+Like CSS, blocking JavaScript also holds off rendering. Unlike
 CSS, JavaScript [processing][cost_js] is significantly more expensive than CSS
 and its render-blocking execution can be arbitrarily long.
 
 On top of that, non-blocking async JavaScript can also block rendering
 in some cases, which we'll discuss further down.
 
-At the same time, in many cases, JavaScript is the one responsible for
+At the same time, in many cases, JavaScript is responsible for
 engaging user experiences on the web, so we cannot wean ourselves off it
 completely.
 
