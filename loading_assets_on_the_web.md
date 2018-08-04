@@ -771,9 +771,15 @@ So download schemes that would enable us to download the first scans of
 all in-viewport images provide a significantly better user experience
 than ones which download images one by one.
 
-![](media/progressive_download.png)
-
-<!-- Credit John Mellor -->
+<figure>
+<img src="media/progressive_download.png">
+<figcaption>
+<p>sequential image loading vs. progressive one, with 15% of image bytes
+downloaded. We can see that with progressive loading the user see all the page's images,
+even if blurry, while with sequential loading they see a single sharp image, but nothing more.</p>
+<p>Credit: John Mellor, Google</p>
+</figcaption>
+</figure>
 
 Currently, HTTP/2 priorities don't enable us to include such
 prioritization schemes in the protocol.
@@ -879,9 +885,10 @@ initial rendering, so it will have no negative side effect.
         window.addEventListener("DOMContentLoaded", loadStyle);
     }
 ```
-<!-- Credit Google Developers documentation for the example -->
+Credit: Google developers - PageSpeedTools insights
 
-[first_raf]: https://developers.google.com/speed/docs/insights/OptimizeCSSDelivery
+[first_raf]: https://developers.google.com/speed/docs/insights/OptimizeCSSDelivery "Example from PageSpeedTools insights, using rAF to optimize CSS delivery."
+
 #### preload
 
 An alternative technique to decouple CSS execution from
@@ -892,8 +899,6 @@ HTMLLinkElement's `load` event.
 
 `<link rel="preload" as="style" href="async_style.css" onload="this.rel='stylesheet'">`
 
-<!-- Credit Scott Jehl for original technique -->
-
 You can also combine the two methods above to trigger a
 download of the preload resource, only after the document has been painted.
 This avoids having it contend for bandwidth with more critical
@@ -902,6 +907,8 @@ resources.
 The downside of these two methods is that the resource will be
 downloaded with high priority, so it runs a real risk of competing 
 with other resources on the page.
+
+Example credit: Scott Jehl
 
 #### Inapplicable media attribute
 Another way to cause an early download of a CSS resource without
@@ -931,7 +938,7 @@ CSS resource was discovered, even if it was in the `<body>`. That meant
 using this technique would have had a significant performance penalty in
 Chrome.
 
-But starting from Chrome 69, Chrome aligned its behavior with other
+But starting from Chrome 69, Chrome [aligned][chrome_css_in_body] its behavior with other
 browsers. Developers can now include non-critical CSS, using `<link
 rel="stylesheet">` tags inside their content, without it having a negative
 impact.
@@ -962,8 +969,8 @@ A future improvement might be for browsers to adapt the CSS priority to
 its location, as it turns it from a render-blocking resource to a
 partial blocker.
 
-[link_in_body]: https://jakearchibald.com/2016/link-in-body/
-<!-- Credit Jake Archibald and Pat Meenan for research, technique and implementation -->
+[link_in_body]: https://jakearchibald.com/2016/link-in-body/ "Jake Archibald's article about loading CSS using `<body>` links"
+[chrome_css_in_body]: https://crbug.com/481122 "Pat Meenan's work to not block rendering on in-`<body>` links"
 
 #### Which one should I use?
 We've discussed four techniques to load CSS, but when should you
@@ -998,7 +1005,7 @@ What's the middle ground? How can we enable performant JavaScript experiences?
 Advice here actually varies, depending on the role of JavaScript in your
 web app.
 
-[cost_js]: https://medium.com/dev-channel/the-cost-of-javascript-84009f51e99e
+[cost_js]: https://medium.com/dev-channel/the-cost-of-javascript-84009f51e99e "Addy Osmany's article outline the cost of JavaScript parsing and execution"
 
 ### JavaScript Enhanced experience - AKA Progressive Enhancement
 Earlier we talked about the advantages of HTML as a
@@ -1061,6 +1068,8 @@ bottom of the `<body>` element, or relying on certain styles to be applied)
 
 [souders_async]: https://calendar.perfplanet.com/2016/prefer-defer-over-async/
 
+<!-- link comment -->
+
 #### Defer
 As far as native script mechanisms go, that leaves us with the `defer`
 attribute. `defer` has the following characteristics:
@@ -1103,7 +1112,7 @@ audience is very much old IE-centric, it is probably safe for you to
 use `defer` and ignore potential issues.
 </aside>
 
-[ie9_defer]: https://github.com/h5bp/lazyweb-requests/issues/42
+[ie9_defer]: https://github.com/h5bp/lazyweb-requests/issues/42 "GitHub issue outlining the problems hit when using `defer` with IE9"
 
 
 #### Why Not Use Blocking JavaScript at the Bottom?
@@ -1153,7 +1162,7 @@ become its disadvantage: the "execute once you download" approach can
 result in premature execution, which can stall more critical code or
 vital browser events (like first paint).
 
-[script_loading]: https://www.html5rocks.com/en/tutorials/speed/script-loading/
+[script_loading]: https://www.html5rocks.com/en/tutorials/speed/script-loading/ "Jake Archibald's article exploring various script loading techniques"
 
 #### Using requestAnimationFrame as a First-Paint Proxy
 Like we've seen for CSS, you can use `requestAnimationFrame` as a way to
@@ -1220,7 +1229,7 @@ where the problem is being defined and various solutions have been outlined.
 Once that work is done, the solution will hopefully be standardized and
 implemented in all other modern browsers.
 
-[intuitive_js]: https://bugs.chromium.org/p/chromium/issues/detail?id=838761
+[intuitive_js]: https://bugs.chromium.org/p/chromium/issues/detail?id=838761 "High-level Chromium issue exploring better native JavaScript loading mechanisms"
 
 ### JavaScript-Reliant Experience
 Many web sites today rely on
@@ -1342,8 +1351,8 @@ information to the browser, so it can do the right thing. It will also
 be helpful to define a simple way for developers to define an element's
 aspect ratio, rather than rely on [`padding-top`-based hacks][padding_ratio].
 
-[chrome_lazy_load]: https://groups.google.com/a/chromium.org/forum/#!msg/blink-dev/czmmZUd4Vww/1-H6j-zdAwAJ
-[padding_ratio]: https://css-tricks.com/aspect-ratio-boxes/
+[chrome_lazy_load]: https://groups.google.com/a/chromium.org/forum/#!msg/blink-dev/czmmZUd4Vww/1-H6j-zdAwAJ "Intent to Implement: Lazily load below-the-fold iframes and images"
+[padding_ratio]: https://css-tricks.com/aspect-ratio-boxes/ "Using CSS padding to define aspect ratio"
 
 ### IntersectionObserver
 JavaScript-based lazy loading has become significantly easier to
@@ -1417,7 +1426,7 @@ with no text to read?
 There are [various strategies][font_strategies] you can take to tackle this, but you have
 two major options.
 
-[font_strategies]: https://www.zachleat.com/web/comprehensive-webfonts/
+[font_strategies]: https://www.zachleat.com/web/comprehensive-webfonts/ "Zach Leatherman's comprehensive guide to font loading strategies"
 
 ### Font-display CSS rule
 The `font-display` CSS rules are fairly widely supported (all modern
@@ -1448,7 +1457,7 @@ that represent different styles or weights, they may come in at
 different times, resulting in a potentially jarring experience to your
 users.
 
-[font_reflow]: https://www.zachleat.com/web/font-display-reflow/
+[font_reflow]: https://www.zachleat.com/web/font-display-reflow/ "Zach Leatherman describing the issue of font reflow caused by different swap times"
 
 If this is your case, you may prefer to use the…
 
@@ -1549,9 +1558,7 @@ connections: there is no server to correlate the
 requests according to their priorities. But we'll discuss that more when
 we talk about contention.
 
-[preload_medium_delay]: https://chromium-review.googlesource.com/c/chromium/src/+/720798
-
-<!-- TODO: do we need to add example waterfalls here? -->
+[preload_medium_delay]: https://chromium-review.googlesource.com/c/chromium/src/+/720798 "Chromium issue tracking work to resolve preloads jumping the queue"
 
 # Minimal Content
 We talked earlier about properly splitting and prioritizing critical and
@@ -1604,7 +1611,7 @@ make a first impression. The content will also not be cached whenever
 you update it, which you should do fairly regularly, to avoid any
 [known security vulnerabilities][vulnerabilities] in popular libraries.
 
-[vulnerabilities]: https://snyk.io/blog/77-percent-of-sites-still-vulnerable/
+[vulnerabilities]: https://snyk.io/blog/77-percent-of-sites-still-vulnerable/ "Tim Kadlec writes on client-side vulnerabilities in popular sites, coming from outdates libraries"
 
 On top of that, caches get evicted. Particularly on mobile devices (where it
 matters most), unless your site is the most popular one a user
@@ -1625,9 +1632,7 @@ all JavaScript content (as some content may not be eligible for caching). There
 are also no guarantees that the cached parsing products won’t get
 evicted before your content does.
 
-[code_caching]: https://v8project.blogspot.com/2018/04/improved-code-caching.html
-
-<!-- TODO: Make sure that's actually true -->
+[code_caching]: https://v8project.blogspot.com/2018/04/improved-code-caching.html "Improved Code caching in V8"
 
 Finally, unused CSS and JavaScript increases your site's memory footprint
 for no good reason, as the browser has to maintain the unused rules and
@@ -1758,6 +1763,7 @@ sooner rather than later.
 [webpackage]: https://github.com/WICG/webpackage
 [khan_bundling]: https://engineering.khanacademy.org/posts/js-packaging-http2.htm
 [stream_parsing]: https://v8project.blogspot.com/2018/03/background-compilation.html
+<!-- link comment -->
 
 ## Images
 
@@ -2360,7 +2366,7 @@ your dynamically loaded third parties, and avoid them contending for
 bandwidth and CPU with your own resources.
  
 [spof]: https://calendar.perfplanet.com/2015/reducing-single-point-of-failure-using-service-workers/
-
+<!-- link comment -->
 ## Feature policy
 Finally, one of the great promises of AMP is that it only enables the
 page and third parties a subset of the web's functionality. That doesn't
