@@ -1837,63 +1837,64 @@ them update themselves if they discover they have been purged after
 being served from the server. While not being ideal, that&#39;s the
 closest we can get to purge mechanisms on the web today.</p>
 <h1 id="control-over-third-parties">Control Over Third Parties</h1>
-<p>One of open secrets in the web performance community is that improving
+<p>An open secret in the web performance community is that improving
 your site&#39;s performance can make little difference if you introduce third
 party resources to your page that will slow it down.</p>
 <p>The web&#39;s ability to mash-up content from different sources and origins
-is what makes it a powerful, expressive platform. But it also comes at a
-security and performance cost. Third parties on the we are often
+is what makes it a powerful, expressive platform. But it comes at a
+security and performance cost. Third parties on the web are often
 incentivized to maximize their engagement metrics, which don&#39;t always
 align with your users&#39; performance and experience.</p>
-<p>The AMP project was created, at least in part, as an effort to get those third parties in
+<p>The Accelerated Mobile Pages (AMP) project was created, at least in part, as an effort to get those third parties in
 alignment with performance best-practices, by eliminating most of them
 and allowing others controlled access to the page.</p>
-<p>But if you&#39;re not using AMP, how can you make sure that your third party
+<p>But if you&#39;re not using AMP, how can you make sure your third party
 content doesn&#39;t cause too much damage to your user&#39;s experience?</p>
 <h2 id="lazy-loading">Lazy loading</h2>
 <p>We talked earlier about lazy loading in the context of loading and
 contention avoidance, and it is very much applicable to third party
-content. Because your third party content <em>will</em> contend on bandwidth
-with your own, you should delay its loading if and for as long as you possibly can,
+content. Because your third party content <em>will</em> contend for bandwidth
+with yours, you should delay loading it for as long as you possibly can,
 while still allowing it to perform its function.</p>
 <p>With third party content, it&#39;s particularly important not to load it in
-a blocking manner. That is, not to load third party script as a blocking
-<code>&lt;script&gt;</code> tag. The reason for that is that if the third party is down
+a blocking manner; that is, not to load third party scripts in blocking
+<code>&lt;script&gt;</code> tags. The reason for that if the third party is down
 for whatever reason, your site&#39;s parsing will halt until that third
-party content is loaded or until the browser gives up on loading it,
-which could take tens of seconds, depending on the browser and the OS.
+party content is loaded, or until the browser gives up on loading it,
+which could take dozens of seconds, depending on the browser and the OS.
 That is usually referred to as a front-end single point of failure, or
 SPOF for short.</p>
 <h2 id="iframe-your-3rd-parties">Iframe your 3rd parties</h2>
 <p>Another useful way to get third party content out of the way is to
 compartmentalize it in its own iframe. That is good for security
-(prevents it from accessing your page&#39;s DOM without your permission), as
+(because it prevents it from accessing your page&#39;s DOM without your permission), as
 well as for CPU performance (as cross-origin iframes have their own
 main thread).</p>
 <p>That&#39;s also the approach taken by AMP, where arbitrary third party
 scripts can only run inside iframes.</p>
 <p>Unfortunately, not all third parties are amenable to being iframed, and
-some are requiring access to the main page&#39;s DOM in order to function
-properly. Past initiatives such as <a href="https://www.iab.com/guidelines/safeframe/">SafeFrame</a> which would
-enable controlled DOM access to iframed third parties did not take off,
+some require access to the main page&#39;s DOM to function
+properly. Past initiatives such as <a href="https://www.iab.com/guidelines/safeframe/">SafeFrame</a> which
+enabled controlled DOM access to iframed third parties did not take off,
 and not many third parties support them.</p>
 <h2 id="content-security-policy">Content-Security-Policy</h2>
 <p>If you have to run your third party scripts in the main page&#39;s context,
 you can restrict what content they can download and where they can
 download it from using Content-Security-Policy.
-Including CSP directives can help you make sure that e.g. image-based
+Including CSP directives can help you make sure that, for example, image-based
 ads don&#39;t turn into video and audio ads without your permission.
 At the same time, you should note that CSP doesn’t yet allow you to
 control what the iframes that load in your page are doing, so it cannot
-be used to enforce restrictions on e.g. ads loaded inside iframes.</p>
+be used to enforce restrictions on ads loaded inside iframes, for
+instance.</p>
 <h2 id="service-worker">Service Worker</h2>
 <p>We talked about Service Workers in the context of caching and offline
 support, but they also enable you to enforce various rules on outgoing
 requests, if they are running in the context of the main page.
-For example, you can use Service Workers in order to make sure third
+For example, you can use Service Workers to make sure third
 party content does not <a href="https://calendar.perfplanet.com/2015/reducing-single-point-of-failure-using-service-workers/">SPOF your page</a> if it doesn&#39;t load.
-Similarly, you can use Service Workers in order to delay the loading of
-your dynamically loaded third parties, and avoid them contending on
+Similarly, you can use Service Workers to delay loading
+your dynamically loaded third parties, and avoid them contending for
 bandwidth and CPU with your own resources.</p>
 <h2 id="feature-policy">Feature policy</h2>
 <p>Finally, one of the great promises of AMP is that it only enables the
@@ -1902,7 +1903,7 @@ seem like a great promise, but in practice, it prevents both content
 as well as third party developers from shooting themselves (and the
 user) in the foot.</p>
 <p>One effort to bring the same type of enforcement to the web is the
-<a href="https://wicg.github.io/feature-policy/">Feature Policy specification</a>. It enables developers to
+<a href="https://wicg.github.io/feature-policy/">Feature Policy specification</a>. It allows developers to
 explicitly turn off features they know they won&#39;t need on their page,
 and prevent third parties from (ab)using those features. Features like
 video and audio autoplay, use of synchronous XMLHttpRequest, size of
@@ -1913,10 +1914,10 @@ parties further than you restrict the main context.</p>
 <h1 id="in-summary">In summary</h1>
 <p>Loading resources on the web today is hard. At the very least, it&#39;s hard
 to do in an optimal way. But, it&#39;s getting better. And browsers are
-heavily investing in improving it significantly.</p>
+investing heavily in improving it significantly.</p>
 <h2 id="what-to-do-">What to do?</h2>
-<p>We went through many different subjects throughout the chapter, so it&#39;s
-easy to lose track of what&#39;s is theoretical and what is actionable.</p>
+<p>We&#39;ve covered through many different subjects throughout the chapter, so it&#39;s
+easy to lose track of what is theoretical and what is actionable.</p>
 <p>Below is a checklist you can go over to refresh your memory, and find
 things to focus on to improve your site&#39;s performance:</p>
 <ul>
@@ -1932,8 +1933,7 @@ things to focus on to improve your site&#39;s performance:</p>
 </li>
 <li>Load code <em>when</em> you need it<ul>
 <li>Progressive CSS loading - Load styles for your out-of-viewport content at the point where they are needed.</li>
-<li>Non-blocking JavaScript loading - Make sure that your JavaScript is loaded in a non-blocking manner.
-your users&#39; CPU.</li>
+<li>Non-blocking JavaScript loading - Make sure that your JavaScript is loaded in a non-blocking manner.</li>
 <li>Lazy load images - Use one of the various lazy loading libraries (preferably one that uses IntersectionObservers) to lazy load your out-of-viewport images.</li>
 <li>Use smart font loading strategies - Prefer FOUT and use <code>font-display: swap</code> or the Font Loading API to achieve it.</li>
 </ul>
@@ -1979,30 +1979,30 @@ first stab at fixing. It will significantly reduce the protocol overhead
 and make transport significantly less sensitive to the network&#39;s
 latency.</li>
 <li>Third parties impact on the network will be significantly limited, as
-the browser will avoid bandwidth contention between low priority
+browsers will avoid bandwidth contention between low priority
 resources and high priority ones, by delaying low priority requests, and
 by orchestrating the different connections and streams based on their
 priority.</li>
 <li>Browsers will also avoid opening multiple connections to the same
-origin to prevent bandwidth contention. Secondary certs will enable
+origin to prevent bandwidth contention. Secondary certificates will enable
 sites to easily coalesce their different domains onto the same connection for
 improved prioritization.</li>
 <li>The third party ecosystem will be significantly more amenable to being
 iframed for increased performance and security.</li>
 <li>The framework ecosystem will make heavy use of workers, delegating
-more JavaScript work off-main-thread.</li>
-<li>Feature policy combined with iframes third parties will enable
+more JavaScript work off the main thread.</li>
+<li>Feature Policy combined with iframed third parties will enable
 developers to take back control over their user&#39;s experience.</li>
 <li>Lazy loading non-critical content will become significantly easier
 through new loading paradigms.</li>
 <li>Early delivery and resource discovery will be fixed using Server Push
 (with Cache Digests), Preload and priority hints. Build tools will
 automatically create those instructions for developers at build time.</li>
-<li>JavaScript resources will be bundled using WebPackages, enabling
+<li>JavaScript resources will be bundled using Web Packaging, enabling
 improved compression, caching granularity, and (combined with Cache
-Digests) avoiding to send down resources already in the browser&#39;s cache.</li>
+Digests) avoiding sending resources already in the browser&#39;s cache.</li>
 <li>Common build processes will also help make sure completely unused JavaScript
-and CSS is never sent down to the browser, and rarely/late used code
+and CSS are never sent to browsers, and rarely or late used code
 is loaded later on.</li>
 <li>The combination of compression APIs and Service Workers will enable
 off-the-shelf delta compression solutions that will significantly
@@ -2018,12 +2018,11 @@ above and make sure our user&#39;s experiences are as snappy as we want
 them to be.</li>
 </ul>
 <p>These are all things that are currently being discussed and are in
-different phases of the standardization process. Some may not make it,
+different phases of the standardization process. Some might not make it,
 and be replaced with more mature incarnations. But the aim is to solve
-all those problems and make the solutions for them a reality in the next
-few years.</p>
+all those problems in the next few years.</p>
 <p>In aggregate, all these improvements would mean that loading resources in a performant way on the web would
-become easy to do, and the default way of creating content for the web.
-I believe that can make your lives as developers easier, and more
+become easy, and the default way of creating content for the web.
+I believe that would make your lives as developers easier, and more
 importantly improve our user&#39;s default experience of the web.</p>
 

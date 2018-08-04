@@ -2287,43 +2287,43 @@ being served from the server. While not being ideal, that's the
 closest we can get to purge mechanisms on the web today.
 
 # Control Over Third Parties
-One of open secrets in the web performance community is that improving
+An open secret in the web performance community is that improving
 your site's performance can make little difference if you introduce third
 party resources to your page that will slow it down.
 
 The web's ability to mash-up content from different sources and origins
-is what makes it a powerful, expressive platform. But it also comes at a
-security and performance cost. Third parties on the we are often
+is what makes it a powerful, expressive platform. But it comes at a
+security and performance cost. Third parties on the web are often
 incentivized to maximize their engagement metrics, which don't always
 align with your users' performance and experience.
 
-The AMP project was created, at least in part, as an effort to get those third parties in
+The Accelerated Mobile Pages (AMP) project was created, at least in part, as an effort to get those third parties in
 alignment with performance best-practices, by eliminating most of them
 and allowing others controlled access to the page.
 
-But if you're not using AMP, how can you make sure that your third party
+But if you're not using AMP, how can you make sure your third party
 content doesn't cause too much damage to your user's experience?
 
 ## Lazy loading
 We talked earlier about lazy loading in the context of loading and
 contention avoidance, and it is very much applicable to third party
-content. Because your third party content *will* contend on bandwidth
-with your own, you should delay its loading if and for as long as you possibly can,
+content. Because your third party content *will* contend for bandwidth
+with yours, you should delay loading it for as long as you possibly can,
 while still allowing it to perform its function.
 
 With third party content, it's particularly important not to load it in
-a blocking manner. That is, not to load third party script as a blocking
-`<script>` tag. The reason for that is that if the third party is down
+a blocking manner; that is, not to load third party scripts in blocking
+`<script>` tags. The reason for that if the third party is down
 for whatever reason, your site's parsing will halt until that third
-party content is loaded or until the browser gives up on loading it,
-which could take tens of seconds, depending on the browser and the OS.
+party content is loaded, or until the browser gives up on loading it,
+which could take dozens of seconds, depending on the browser and the OS.
 That is usually referred to as a front-end single point of failure, or
 SPOF for short.
 
 ## Iframe your 3rd parties
 Another useful way to get third party content out of the way is to
 compartmentalize it in its own iframe. That is good for security
-(prevents it from accessing your page's DOM without your permission), as
+(because it prevents it from accessing your page's DOM without your permission), as
 well as for CPU performance (as cross-origin iframes have their own
 main thread).
 
@@ -2331,9 +2331,9 @@ That's also the approach taken by AMP, where arbitrary third party
 scripts can only run inside iframes.
 
 Unfortunately, not all third parties are amenable to being iframed, and
-some are requiring access to the main page's DOM in order to function
-properly. Past initiatives such as [SafeFrame][safeframe] which would
-enable controlled DOM access to iframed third parties did not take off,
+some require access to the main page's DOM to function
+properly. Past initiatives such as [SafeFrame][safeframe] which
+enabled controlled DOM access to iframed third parties did not take off,
 and not many third parties support them.
 
 [safeframe]: https://www.iab.com/guidelines/safeframe/
@@ -2342,20 +2342,21 @@ and not many third parties support them.
 If you have to run your third party scripts in the main page's context,
 you can restrict what content they can download and where they can
 download it from using Content-Security-Policy.
-Including CSP directives can help you make sure that e.g. image-based
+Including CSP directives can help you make sure that, for example, image-based
 ads don't turn into video and audio ads without your permission.
 At the same time, you should note that CSP doesn’t yet allow you to
 control what the iframes that load in your page are doing, so it cannot
-be used to enforce restrictions on e.g. ads loaded inside iframes.
+be used to enforce restrictions on ads loaded inside iframes, for
+instance.
 
 ## Service Worker
 We talked about Service Workers in the context of caching and offline
 support, but they also enable you to enforce various rules on outgoing
 requests, if they are running in the context of the main page.
-For example, you can use Service Workers in order to make sure third
+For example, you can use Service Workers to make sure third
 party content does not [SPOF your page][spof] if it doesn't load.
-Similarly, you can use Service Workers in order to delay the loading of
-your dynamically loaded third parties, and avoid them contending on
+Similarly, you can use Service Workers to delay loading
+your dynamically loaded third parties, and avoid them contending for
 bandwidth and CPU with your own resources.
  
 [spof]: https://calendar.perfplanet.com/2015/reducing-single-point-of-failure-using-service-workers/
@@ -2368,7 +2369,7 @@ as well as third party developers from shooting themselves (and the
 user) in the foot.
 
 One effort to bring the same type of enforcement to the web is the
-[Feature Policy specification][featurepolicy]. It enables developers to
+[Feature Policy specification][featurepolicy]. It allows developers to
 explicitly turn off features they know they won't need on their page,
 and prevent third parties from (ab)using those features. Features like
 video and audio autoplay, use of synchronous XMLHttpRequest, size of
@@ -2383,12 +2384,12 @@ parties further than you restrict the main context.
 
 Loading resources on the web today is hard. At the very least, it's hard
 to do in an optimal way. But, it's getting better. And browsers are
-heavily investing in improving it significantly.
+investing heavily in improving it significantly.
 
 ## What to do?
 
-We went through many different subjects throughout the chapter, so it's
-easy to lose track of what's is theoretical and what is actionable.
+We've covered through many different subjects throughout the chapter, so it's
+easy to lose track of what is theoretical and what is actionable.
 
 Below is a checklist you can go over to refresh your memory, and find
 things to focus on to improve your site's performance:
@@ -2402,7 +2403,6 @@ things to focus on to improve your site's performance:
 * Load code *when* you need it
     - Progressive CSS loading - Load styles for your out-of-viewport content at the point where they are needed.
     - Non-blocking JavaScript loading - Make sure that your JavaScript is loaded in a non-blocking manner.
-    your users' CPU.
     - Lazy load images - Use one of the various lazy loading libraries (preferably one that uses IntersectionObservers) to lazy load your out-of-viewport images.
     - Use smart font loading strategies - Prefer FOUT and use `font-display: swap` or the Font Loading API to achieve it.
 * Load less
@@ -2438,30 +2438,30 @@ first stab at fixing. It will significantly reduce the protocol overhead
 and make transport significantly less sensitive to the network's
 latency.
 * Third parties impact on the network will be significantly limited, as
-  the browser will avoid bandwidth contention between low priority
+  browsers will avoid bandwidth contention between low priority
 resources and high priority ones, by delaying low priority requests, and
 by orchestrating the different connections and streams based on their
 priority.
 * Browsers will also avoid opening multiple connections to the same
-  origin to prevent bandwidth contention. Secondary certs will enable
+  origin to prevent bandwidth contention. Secondary certificates will enable
 sites to easily coalesce their different domains onto the same connection for
 improved prioritization.
 * The third party ecosystem will be significantly more amenable to being
   iframed for increased performance and security.
 * The framework ecosystem will make heavy use of workers, delegating
-  more JavaScript work off-main-thread.
-* Feature policy combined with iframes third parties will enable
+  more JavaScript work off the main thread.
+* Feature Policy combined with iframed third parties will enable
   developers to take back control over their user's experience.
 * Lazy loading non-critical content will become significantly easier
   through new loading paradigms.
 * Early delivery and resource discovery will be fixed using Server Push
   (with Cache Digests), Preload and priority hints. Build tools will
  automatically create those instructions for developers at build time.
-* JavaScript resources will be bundled using WebPackages, enabling
+* JavaScript resources will be bundled using Web Packaging, enabling
   improved compression, caching granularity, and (combined with Cache
-Digests) avoiding to send down resources already in the browser's cache.
+Digests) avoiding sending resources already in the browser's cache.
 * Common build processes will also help make sure completely unused JavaScript
-  and CSS is never sent down to the browser, and rarely/late used code
+  and CSS are never sent to browsers, and rarely or late used code
 is loaded later on.
 * The combination of compression APIs and Service Workers will enable
   off-the-shelf delta compression solutions that will significantly
@@ -2477,13 +2477,12 @@ request with those hints.
 them to be.
 
 These are all things that are currently being discussed and are in
-different phases of the standardization process. Some may not make it,
+different phases of the standardization process. Some might not make it,
 and be replaced with more mature incarnations. But the aim is to solve
-all those problems and make the solutions for them a reality in the next
-few years.
+all those problems in the next few years.
 
 In aggregate, all these improvements would mean that loading resources in a performant way on the web would
-become easy to do, and the default way of creating content for the web.
-I believe that can make your lives as developers easier, and more
+become easy, and the default way of creating content for the web.
+I believe that would make your lives as developers easier, and more
 importantly improve our user's default experience of the web.
 
