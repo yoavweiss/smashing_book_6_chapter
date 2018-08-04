@@ -1461,45 +1461,44 @@ a class on their container, for example, or adding the fonts dynamically) only o
 
 
 # Full Bandwidth Pipe
-Because web content is comprised of many smaller resources,
-traditionally, it has been difficult to make sure the network's
-bandwidth is well-utilized when delivering it. We discussed early
-delivery earlier, but that's not the only piece for that puzzle.
+Because web content comprises many smaller resources,
+traditionally it has been difficult to make sure the network's
+bandwidth is well used when delivering it. We've already discussed early
+delivery, but that's not the only piece of that puzzle.
 With HTTP/1, requests often incurred the overhead of starting their own
-connections, which introduced a delay between the time the resource was
-discovered to the time it was requested.
-That delay still exists, to a lesser extent, for HTTP/2 for third party content. A separate connection still needs to be established.
+connections, which introduced a delay between the time a resource was
+discovered and the time it was requested.
+That delay still exists, to a lesser extent, for HTTP/2 for third party content: a separate connection still needs to be established.
 
 Resource discovery itself is another tricky piece. Since web content is
-progressively discovered, it means that network efficiency is often
-blocked on processing efficiency (the browser has to do work on
-previously loaded resources in order to discover and request future
+progressively discovered, it means network efficiency is often
+blocked by processing efficiency (the browser has to work on
+previously loaded resources to discover and request future
 ones).
-It also means that resource loading is latency bound as at least a full
+It also means that resource loading is latency-bound, as at least a full
 RTT has to be spent on downloading and processing each layer of the
 loading dependency tree, which is required to discover and download the
 next one.
 
 ## Early Discovery
-What can we do in order to speed this process up and avoid this process
-being latency and processing bound?
+What can we do to speed up this process and avoid it
+being latency-and processing-bound?
 
-H2 Push, which we discussed earlier, is one way to make sure that by the
+H2 Push, discussed earlier, is one way to make sure that by the
 time critical resources are discovered by the browser, they are already
 downloaded and are safely stowed in its cache.
 
 ### Preload
-Another, slightly more flexible alternative is preload.
-
-Preload enables us to declaratively fetch resources ahead of time, in a
-way that is decoupled from their usage. That means that for
+Another, slightly more flexible alternative is preload. We mentioned
+preload as a mechanism that decouples loading from execution, but it
+also enables us to declaratively fetch resources ahead of time. For
 predictable late-discovered resources, we could include preload links for them in
-the document, and let the browser know about them and fetch them early on.
+the document, and let browsers know about them and fetch them early on.
 Preloaded resources are downloaded using the right priorities for their
 resource type, which is defined using the `as` attribute.
 
-Preload's `as` attribute enable the browser to know what resource type
-it is fetching and therefore enables it to download it with the right
+Preload's `as` attribute lets browsers know what resource type
+is being fetched and therefore enables downloading with the right
 priority, while using the correct `Accept` headers.
 
 Using it can be as simple as including 
@@ -1511,7 +1510,7 @@ loading patterns, as we've seen previously.
 
 One thing to note when using preload is the `crossorigin` attribute.
 The HTMLLinkElement’s default credentials mode is "include". Therefore, when
-preloading resources with a different credentials mode (e.g. fonts, as well
+preloading resources with a different credentials mode (such as fonts, as well
 as `fetch()`, `XMLHTTPRequest` and ES6 modules by default), you need to
 make sure the `crossorigin` attribute is properly set on your preload
 link, otherwise the resource may not be reused (since the internal
@@ -1519,14 +1518,14 @@ caches will refuse to serve the preloaded response to the future request) which 
 double downloads.
 
 ### Preloads "jumping the queue"
-While working on preload, it was considered a panacea that will enable
-us to "PRELOAD ALL THE THINGS!" and solve the discovery problem in web
+While preload was being developed, it was considered a panacea that
+would allow us to "PRELOAD ALL THE THINGS!" and solve the discovery problem in web
 content.
-However, it turned out that things are not that simple.
-One concern with using preloads is that early discovery also means that
+However, it turned out things are not that simple.
+One concern with using preloads is that early discovery also means
 we rely more heavily on the server to prioritize the content according
-to HTTP/2 priorities, and avoid blocking high-priority content on
-low-priority one.
+to HTTP/2 priorities, and avoid delaying high-priority resources in
+favour of low-priority ones.
 And since in HTTP/2 the browser has no request queue, discovered resources
 are immediately sent to the server with their appropriate HTTP/2
 priority.
@@ -1534,19 +1533,19 @@ priority.
 HTTP/2 priorities are fairly complex and not all servers fully respect them.
 Also, because HTTP/2 is built over TCP, prioritization is even
 trickier. It's possible that the server would start sending
-low priority resources, then switch to high-priority ones, but have the
+low-priority resources, then switch to high-priority ones, but have the
 low-priority resources fill up the TCP queues, blocking more critical
 content.
 
-That means that the order of requests in HTTP/2 matters as well as their
-priorities if not sometimes more. As a result you should be careful that 
+That means the order of requests in HTTP/2 matters as much as their
+priorities – if not sometimes more. As a result you should be careful that 
 using preload does not result in low-priority resources being requested
 before high-priority ones.
 You can do that by incorporating the `<link>` elements in your markup
 below the critical-path resources. For `Link` headers, there's [work underway][preload_medium_delay] to resolve that in Chromium.
  
 There are also issues when preloaded content is delivered over separate
-connections. In those cases, there is no server to correlate the
+connections: there is no server to correlate the
 requests according to their priorities. But we'll discuss that more when
 we talk about contention.
 
@@ -1554,67 +1553,66 @@ we talk about contention.
 
 <!-- TODO: do we need to add example waterfalls here? -->
 
-# Minimal content
+# Minimal Content
 We talked earlier about properly splitting and prioritizing critical and
-non-critical content, but turns out that on the web there a third class
+non-critical content, but it turns out on the web there's a third class
 of content: unneeded content.
 
-## Don't download unused content
-Due to the use of CSS frameworks, large JavaScript libraries, as well as simple code churn, content on the web tends of contain a large percentage of unused code.
-There are many tools today that can help you spot such unused code
+## Don't Download Unused Content
+Owing to the use of CSS frameworks and large JavaScript libraries, as well as simple code churn, content on the web tends of contain a large percentage of unused code.
+There are many tools today that can help you spot such code
 as part of your build process and weed it out.
 
 [Puppeteer coverage API][Puppeteer] enables you to detect such unused
 content and take action on it. It is very easy to use such tools to see
-how much unused CSS and JavaScript you have on your page. It may not be as
+how much unused CSS and JavaScript you have in your page. It may not be as
 trivial to take action on those unused parts and delete them
-automatically, and I'm not aware of current tools which do that.
-But at the very least you should be able to use these tools to monitor
+automatically, and I'm not aware of any current tools that do that.
+But at the very least you should be able to monitor
 the amount of unused JavaScript in your application.
 
 [puppeteer]: https://github.com/GoogleChrome/puppeteer/blob/master/docs/api.md#class-coverage
 
-With that said, it's a bit tricky to use such tools to distinguish unused code from code that will be used later on in
+With that said, it's a bit tricky to distinguish unused code from code that will be used later on in
 some user scenario. That's probably the part that requires developer
 intervention and understanding of your application.
 But once you detect such code, it would probably be better to lazy
-load it when that scenario is likely to actually happen, rather
-than loading it upfront and penalize users for no reason.
+load it when that scenario is likely to happen, rather
+than loading it up front and penalize users for no reason.
 
-One caveat with such tools that use headless Chrome for unused code
-detection - they will declare polyfills for features implemented in
-Chrome and not implemented elsewhere as "unused code". While that is
+One caveat with tools that use headless Chrome for unused code
+detection - polyfills for features implemented in
+Chrome and not implemented elsewhere will be declared as unused code. While that is
 technically true, that code is likely to still be needed in non-Chromium
 browsers. That is something worth keeping in mind when removing unused
 code.
 
 As always, it's significantly easier to make sure you don't get unused
 code into your site when you build it than it is to weed out unused code
-once you realize you have lots of it on your site. Finding out when each
+once you realize you have lots of it on your site. Finding out where each
 piece of code comes from and where it might be used can be a tiresome
-manual process. So avoid getting yourself into such scenarios by having
-proper coverage checks as part of your continuous integration and
-deployment process. That helps to make sure that whenever you
-incorporate a new library for that shiny new feature, you won't incorporate unneeded bloat along with it.
+manual process. Make proper coverage checks part of your continuous integration and
+deployment process. That helps to make sure you don't add unneeded
+bloat whenever you incorporate a new library for that shiny new feature.
 
-### But that unused content is cached, so that's perfectly fine, right?
+### But That Unused Content is Cached, so That's Perfectly Fine, Right?
 
 Well, not really. First of all, that content will not be cached for
-first visit users. Depending on your audience, that could be a large
-chunk of your users, and as they say, you only get one opportunity to
-make a first impression. That content will also not be cached whenever
-you update it, which is you should do fairly regularly, to avoid any
+first-time visitors. That could be a large chunk of your users,
+depending on your audience, and as they say, you only get one chance to
+make a first impression. The content will also not be cached whenever
+you update it, which you should do fairly regularly, to avoid any
 [known security vulnerabilities][vulnerabilities] in popular libraries.
 
 [vulnerabilities]: https://snyk.io/blog/77-percent-of-sites-still-vulnerable/
 
-On top of that, caches get evicted. Especially on mobile devices (where it
-matters most), unless your site is the most popular one that user
+On top of that, caches get evicted. Particularly on mobile devices (where it
+matters most), unless your site is the most popular one a user
 visits, your precious resources may have made room for others. Having
-overly bloated resources (which take up more cache space) actually
+bloated resources (which take up more cache space) actually
 increases the chances of that happening. And even if the resource is in
 the cache, larger resources are more likely to be stored over multiple
-blocks, which on spinning-disk based caches may mean longer retrieval
+blocks, which on spinning-disk based caches might mean longer retrieval
 times.
 
 For JavaScript, extra code also means extra parsing costs. Some
@@ -1631,36 +1629,35 @@ evicted before your content does.
 
 <!-- TODO: Make sure that's actually true -->
 
-Finally, unused CSS and JavaScript code increases your site's memory footprint
+Finally, unused CSS and JavaScript increases your site's memory footprint
 for no good reason, as the browser has to maintain the unused rules and
 code in memory for as long as your site is in memory. In low-memory
-environments (e.g. mobile) that could mean the difference between your
+environments like mobile, that could be the cause for your
 site's tab getting kicked out of memory when the user is not looking.
 
 ## Compression API
-As mentioned above, in many cases the unused content on our sites is
-there due to inclusion of frameworks, where we don't use every bit of
-functionality in them. One solution for that could be to compress that
+As mentioned above, the unused content on our sites is often
+due to including frameworks, where we don't use every bit of
+functionality. One solution could be to compress that
 data away.
 
-How can we do that? If we look at framework data on the web, we'll see
-that a lot of it is shared across sites and can theoretically be very
-efficiently compressed if we were to use a static dictionary that is
+If we look at framework data on the web, we'll notice
+a lot of it is shared across sites and can theoretically be very
+efficiently compressed if we were to use a static dictionary
 based on some older version of that framework.
 
-Gzip have always had static compression dictionaries (albeit limited in
+Gzip has always had static compression dictionaries (albeit limited in
 size). Brotli recently joined it and defined [shared brotli][shared_brotli] dictionaries.
 
-At the same time, there's been [proposals][zip_proposal] to create a browser native compression API,
-which will enable developers to make use of such dictionaries in order
-to decompress data.
+At the same time, there have been [proposals][zip_proposal] to create a browser native compression API,
+which will enable developers to use such dictionaries to decompress data.
 
-Combining these two efforts will enable us to use compression to get rid
+Combining these two efforts will let us use compression to get rid
 of most of our unused code and not transport it to our users every time.
 
-Two things are worth noting regarding that:
+Two things are worth noting:
 
-* These efforts are both still in their early phases, so it may take a
+* Both these efforts are still in their early phases, so it may take a
   while before you can take advantage of them.
 * Compressing the bytes over the network doesn't prevent us from
   paying up their parsing costs at runtime, as the parse time of JavaScript is
@@ -1675,7 +1672,7 @@ unused code is not feasible.
 ## Web Packaging
 
 [Web Packaging][webpackage] is a new standard proposal for a bundling
-format - a format that will enable us to send multiple different
+format - a format that will allow us to send multiple different
 resources in a single, well, package.
 
 The primary use case for that format is to be able to bundle pieces of
@@ -1685,12 +1682,12 @@ Search) to serve such content from their servers, while the browser
 still considers the content provider's origin as the real origin (from a
 security perspective, as well as from a browser UI one).
 
-But a secondary use for such a bundling format could be to improve the
+But a secondary use for such a format could be to improve the
 web's bundling capabilities.
 
 Historically, web developers used to concatenate their scripts and
-styles in order to reduce the number of requests passing through, as
-with HTTP/1.1, each request incurred a cost. With the move to HTTP/2,
+styles to reduce the number of requests, because
+with HTTP/1.1 each request incurred a cost. With the move to HTTP/2,
 the promise was that bundling and concatenation will no longer be
 necessary.
 
@@ -1698,65 +1695,64 @@ But in practice, developers soon [found out][khan_bundling] that
 bundling still has a role:
 
 * HTTP/2 does not have cross-stream compression contexts (for security
-  reasons), which means that each resource is compressed on its own. But
+  reasons), which means each resource is compressed on its own. But
 small files compress with a significantly lower ratio than large ones.
 So if you have many small JavaScript files in your application, you'll get much
-larger overall JavaScript payload over the network if you would bundle your
+larger overall JavaScript payload over the network than if you bundle your
 small files into a single one.
 * Even though HTTP/2 has no extra cost per request over the network,
   that doesn't mean that requests have no extra overhead in the browser.
-At least in Chrome, that overhead can make a difference when added up
+In Chrome, at least, that overhead can make a difference when added up
 among hundreds of requests.
 
-So, bundling still has a role and can overall improve performance if
+So, bundling still has a role and can improve overall performance if
 your site has many different JavaScript or CSS resources. But, currently,
-bundling also has a cost. We've talked earlier about the fact that both
+bundling also has a cost. We've already discussed the fact that both
 JavaScript and CSS are resources that must be executed in their
-entirety. When we bundle resources together, we effectively tell the
-browser that they cannot be executed separately, and none of them starts
-executing until all of them were downloaded and parsed.
+entirety. When we bundle resources together, we effectively tell
+browsers that they cannot be executed separately, and none of them starts
+executing until all of them have been downloaded and parsed.
 
 <aside>
 Chrome 66 introduced a [streaming parser][stream_parsing] for JavaScript so it can be
 parsed on a background thread as it is being downloaded.
-That means that at
-least in some cases, the "all or nothing" approach to JavaScript is slightly
-mitigated. So even though large bundles still have to be executed as a
+That means, at least in some cases, the "all or nothing" approach to JavaScript is slightly
+mitigated; even though large bundles still have to be executed as a
 single unit, they may be parsed progressively.
 Other browsers don’t yet have streamed parsing for JavaScript, but at least some
-of them are actively looking into that area.
+of them are actively looking into it.
 </aside>
 
 Another downside of bundling is the loss of caching granularity. When
-serving resources separately, if any of them is no longer fresh and
-needs updating, they can be downloaded on their own, and all the rest can be retrieved from cache.
+serving resources separately, if any are no longer fresh and
+need updating, they can be downloaded on their own, and the rest can be retrieved from cache.
 But once we've bundled resources, each small change in each one
 of the files means that all of them must be downloaded again. Even
-worse, for JavaScript, it means that the whatever parsing products that
+worse, for JavaScript, it means that whatever parsing products
 the browser created and cached for that file is no longer valid, and the browser
-has to create it again, spending precious user CPU time on that.
+has to create it again, expending precious user CPU time.
 
-The current advice today for developers is to find the right trade-off
+Current advice for developers is to find the right trade-off
 between those two approaches: bundle scripts, but avoid creating huge
-bundles which will delay the scripts' execution and increase the
+bundles that delay the scripts' execution and increase the
 probability of unnecessary cache invalidation.
 
-But let's go back to WebPackaging and how it can help us here. It can
-enable us to create a bundle comprised of many smaller files, with each
-one of them maintaining its identity as an independent entity. That
-means each one of them can be cached separately (based on its own
+But let's go back to WebPackaging and how it can help us. It can
+enable us to create a bundle comprising many smaller files, with each
+one of them maintaining its identity as an independent entity.
+Each one of them can be cached separately (based on its own
 caching lifetime directives) and processed separately. Therefore, we
-would no longer have to download the entire package in order to update
-e.g. the first resource in it, and we won't have to invalidate all of it
-if a single resource in it has changed or needs revalidation.
+would no longer have to download the entire package to update
+a single resource within it, and we won't have to invalidate all of it
+if one resource has changed or needs revalidation.
 
 At the same time, we would be able to compress the entire bundle as a
 single resource, providing us the same compression benefits as today's
 bundling would.
 
 This is all in its early days, and there's currently no concrete
-proposal to enable this, but it's seems that almost all the building blocks for
-this are in place or in motion, so hopefully this will become a reality
+proposal for it, but almost all the building blocks
+are in place or in motion, so hopefully this will become a reality
 sooner rather than later.
 
 [webpackage]: https://github.com/WICG/webpackage
