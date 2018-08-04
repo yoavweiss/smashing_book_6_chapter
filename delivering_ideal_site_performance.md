@@ -1907,46 +1907,46 @@ fonts to the minimal subset you need.
 
 # Contention avoidance
 We talked earlier about resource priorities and the way that browsers
-handle priorities in HTTP/2 by sending the requests to the server, and
+handle priorities in HTTP/2 by sending requests to the server, and
 letting it send the high priority resources first. However, there’s one
-big problem in that scheme: on the web today, **there is no single
+big problem with that scheme: on the web today, **there is no single
 server**. Most sites are served from a multitude of servers, as
 different first-party resources are often served from different hosts
-(e.g. static files served from static hosting providers, images served
+(static files served from static hosting providers, images served
 from an image optimization service, etc).  On top of that, 3rd party
 resources are served from servers outside of the publisher’s control.
 
-Each of these servers has no visibility into the other resources
+Each of these servers has no knowledge of the other resources
 downloaded from other hosts, and therefore cannot take them into account
-when considering resource priorities, as it can only prioritize the
-resources that it is sending the user.
+when considering resource priorities. It can only prioritize its own
+resources.
 
-In practice, that often means that every server handles only a handful
+In practice, that often means every server handles only a handful
 of resources, in many cases of similar priority. So the server
-frequently find itself with a low-priority resource at the top of the
-priority queue, and therefore sends it to the user, as it is the highest
+frequently finds itself with a low-priority resource at the top of the
+priority queue, and sends it to the user, as it is the highest
 priority resource on the connection!
 
 That often leads to bandwidth contention between critical resources on
 the page and less-critical ones that are served from different hosts.
 
 ## Connection pools
-Another source of contention is the fact that at least some browsers
-open different connection for non-credentialed resources. That mostly
-impacts fonts, XHR and `fetch()` based resources, but it means that
+Another source of contention is that at least some browsers
+open different connections for non-credentialed resources. That mostly
+impacts fonts, XHR and `fetch()` based resources, but it means
 these resources are fetched on a separate connection where the same
 problem as above applies - these resources are fetched without taking
 into account most of the critical resources on the page's "main"
 connection - the credentialed connection.
-Firefox has [changed that behavior][firefox_pools] starting from Firefox 60, but
+Firefox has [changed that behavior][firefox_pools] from Firefox 60, but
 Chrome still uses separate connection pools.
 
 [firefox_pools]: https://bugzilla.mozilla.org/show_bug.cgi?id=1363284
 
 ## HTTP/2 Connection Coalescing
-HTTP/2 has a mechanism that enables you to get rid of some of these
+HTTP/2 has a mechanism to get rid of some of these
 duplicate connections: If multiple hosts on your site all map to the
-same IP and are all covered by a single certificate (so cross-origin
+same IP address and are all covered by a single certificate (so cross-origin
 hosts are covered by the navigation connection's certificate
 Server-Alternate-Name, or SAN, extension), then the browser is able to coalesce
 all those connections together on a single host.
@@ -1956,8 +1956,8 @@ comes with some hurdles:
 * A DNS request is still required (to verify that these hosts map to a
   single IP), adding some latency to the process.
 * It's not always easy to convince your IT department to add multiple
-  hosts as your cert's SAN.
-* DNS based load balancing can mean that it's tricky to make sure these
+  hosts as your certificate's SAN.
+* DNS based load balancing can mean it's tricky to make sure these
   hosts always map to the same IPs, and different browsers do different
 things when the hosts map to multiple IPs.
 
@@ -1967,7 +1967,7 @@ even less reliable in practice.
 
 [firefox_connection_coalesing]: https://daniel.haxx.se/blog/2016/08/18/http2-connection-coalescing/
 
-## Secondary certs
+## Secondary Certificates
 One solution to make connection coalescing easier is an upcoming proposal called
 Secondary Certs, which will enable some of those unrelated servers to
 share a single connection and properly prioritize the content on it.
@@ -1980,32 +1980,31 @@ certificates. That process is, in a sense, similar to a TLS handshake,
 but is performed on the same initial connection. After the server has
 proved it can handle requests for those other hosts, the browser can
 simply send those requests on that same connection, avoiding connection
-establishment and slow-start overhead, and most of all, avoid bandwidth
+establishment and slow-start overhead. Most of all, it can avoid bandwidth
 contention, as the server can handle the priorities of requests from
 different hosts on a single connection, and as part of a single priority
 queue.
 
-## Delayed requests
+## Delayed Requests
 Another potential solution to the bandwidth contention problem is to
 bring back client-side request queues to HTTP/2, and make sure that
 low-priority requests which will go on a different connection than the
-"main" one, will get buffered on the client side until some point where
+main one, will get buffered on the client side until some point when
 we are certain they will not slow down the more critical resources.
 
-While doing that kinda works for HTTP/1, for HTTP/2 it seems like we can
-so better.
-Delaying the requests means that they will hit the servers half an RTT
-after we decide it's OK to send them because the risk for contention is
-gone (e.g. the critical resources have downloaded). Also, by default, if
-we hold back the requests, no connection will be established. We could
-in those cases implicitly preconnect to those hosts.
-That'd be better, but
-maybe still not perfect.
+While doing that mostly works for HTTP/1, for HTTP/2 it seems we can
+do better.
+Delaying the requests means they will hit the servers half an RTT
+after we decide it's OK to send them because the risk of contention is
+gone (for example, the critical resources have downloaded). Also, by default, if
+we hold back the requests, no connection will be established. We could,
+then, implicitly preconnect to those hosts.
+That'd be better, but maybe still not perfect.
 
-## Net stack orchestration
+## Net Stack Orchestration
 A better alternative would be to be able to send those requests to the
-related servers, but use HTTP/2's session and stream flow controls in
-order to make sure the responses are not sent back (or don't take more
+related servers, but use HTTP/2's session and stream flow controls
+to make sure the responses are not sent back (or don't take more
 than a certain amount of bandwidth) until the critical resources are
 well on their way.
 
@@ -2014,19 +2013,20 @@ size of the critical resources coming in), that can lead to perfect
 network stack based orchestration of content coming in from multiple
 connections.
 
-## Same-connection H2 contention
-The previous section all discussed contention in an H2 world where there
+## Same-Connection H2 Contention
+The previous section discussed contention in an H2 world where there
 are multiple connections, and resources on these separate connections
-are contending with each other. But there are also scenarios in H2 where
+contend with each other. But there are also scenarios in H2 where
 resources contend with same priority resources on that same connection.
 
 Consider a scenario where multiple JavaScript resources are being
-downloaded from a server, all in the same priority. The server can send
+downloaded from a server, all at the same priority. The server can send
 those resources down in 2 different ways:
+
 1) Interleave the resources, sending a buffer of each of them.
 2) Send the resources one after the other.
 
-Which of these approaches would be a better one?
+Which of these approaches would be better?
 
 When talking about JavaScript or CSS resources, the answer is obvious. Since
 these resources need to be processed in their entirety before they can
@@ -2046,51 +2046,49 @@ are still of low quality.
 Browsers can control the way that H2 servers send their resources and
 try to influence them, using H2's dependencies and weights. While
 weights represent the resource's priority, dependencies can tell the
-server to prefer to send a resource only after the entire resource is
+server to prefer to send a resource only after the entire resource it
 depends on was sent down. In practice, that translates to the server
 sending resources on-by-one, if it's possible.
 
-The notion of in-stream H2 priority, discussed earlier, would enable browsers to indicate servers that e.g. a certain resource's first few chunks are more important than its end. 
+The notion of in-stream H2 priority, discussed earlier, would enable browsers to indicate to servers that, for example, a certain resource's first few chunks are more important than its last.
 
-## What can you do about it?
+## What Can You Do About It?
 Unfortunately, most of the items listed above are things that browsers
-would need to improve in order for you to take advantage of.
-
-But there are still a few things you can do in order to minimize the
+would need to improve in order for you to take advantage of them.
+But there are still a few things you can do to minimize the
 negative impact of third party downloads on your main resources.
 
-### Rewrite static third party resources to your own domain.
+### Rewrite Static Third Party Resources to Your Own Domain
 If at all possible, you'd be better off rewriting static third party
-resources to point to your own domain, and re-host them there. That
-would mean that from the browser's perspective, these resources are now
+resources to point to your own domain, and re-host them there. From the browser's perspective, these resources become
 first party, and can hitch a ride on the existing first-party H2
-connection, and not contend on bandwidth with your own resources.
+connection, and not contend for bandwidth with your own resources.
 Unfortunately, you have to be pretty sure these resources are public, static and
 not personalized in any way. From a security perspective, these
 resources can now be inspected by code running on your site, so you need
-to make sure these third party resources are public resources, to avoid
+to make sure these third party resources are public, to avoid
 any security issues.
 
-Another reason to make sure these resources are public is that if that resources depend on cookies in any way,
-these cookies will be lost when rewriting the URLs.
+Another reason to make sure these resources are public is that if they depend on cookies in any way,
+the cookies will be lost when rewriting the URLs.
 
-### Delay requesting of non-critical third parties.
+### Delay Requesting Non-Critical Third Parties
 
 Another alternative to avoid contention is to time-shift the
-non-critical third party requests to a point in time where they will not
+non-critical third party requests to a point in time when they will not
 contend with your main content. That may look very much like the
 lazy-loading of non-critical JavaScript content, but potentially delayed even
 further, to avoid contention with your own non-critical content.
 
-### Use connection coalescing to your advantage.
+### Use Connection Coalescing to Your Advantage
 We talked earlier about H2 connection coalescing and all of its caveats. But even with all those downsides, HTTP/2 connection coalescing is the only
-mechanism you can use today in order to reduce the proliferation of
+mechanism you can use today to reduce the proliferation of
 different connections competing with each other on your site. Connection
 coalescing is something you can take advantage of if you have your own
 "3rd party" domains that you control, such as an images or a static
 resource domain.
 
-If you do, you need to make sure that two conditions apply in order for
+If you do, you need to make sure that two conditions apply for
 the browser to coalesce those connections:
 
 * The domain needs to be covered under the first party domain's SAN.
@@ -2105,12 +2103,12 @@ connection coalescing today.
 
 We also mentioned that some browsers use different connection pools for
 non-credentialed resources, which means even some of your first-party
-resources can contend on bandwidth with your other resources.
+resources can contend for bandwidth with your other resources.
 At least when it comes to `XMLHttpRequest` and `fetch()` requests, you
 can specify that these requests will be requested with credentials, and
 avoid them going out on a separate connection. Unfortunately, that's not
-possible for all CORS anonymous requests (e.g. there's no way to fetch
-fonts as no-cors).
+possible for all CORS anonymous requests (there's no way to fetch
+fonts as no-cors, for instance).
 
 The way you would do that for XHR would be something like:
 
@@ -2129,31 +2127,30 @@ fetch("https://www.example.com/data.json", { credentials: 'include' }).then((res
 });
 ```
 
-# Minimizing latency
-One of the most important factors on resource loading performance is the
-network latency. There are many aspects of the loading that are impacted
-by it: connection establishment, resource discovery and the delivery itself.
-While as web developers, we cannot reduce the latency of the physical network,
+# Minimizing Latency
+One of the most important factors on resource loading performance is
+network latency. There are many aspects of loading that are affected
+by it: connection establishment, resource discovery, and the delivery itself.
+While we cannot reduce the latency of the physical network,
 there are various ways in which we can get around it.
 
-## Physical location
-One way to get around the latency of the physical network is to bring
-the content closer to the user. That can be done by hosting the content
-on various locations around the planet and serving users from the
-location closer to them. While you could do that, that will require you
+## Physical Location
+One way is to bring the content closer to the user. That can be done by hosting the content
+at various locations around the planet and serving users from the
+location closest to them. This will require you
 to synchronize the content between those different locations.
 
-Turns out, there are commercial services that will do that for you.
-Content Delivery Networks (or CDNs) enable you to host your content at a
+It turns out there are commercial services that will do that for you.
+Content delivery networks enable you to host your content at a
 single location, while their edge servers take care of distributing it
-all over the world. That enables significantly shorter end-user
-latencies for both connection establishment and content delivery, 
+all over the world. That enables significantly shorter
+latencies for both connection establishment and content delivery,
 assuming you set your content's caching headers correctly.
 
 ## Caching
 Caching is an important part of of our fight against latency. Caching at
 the origin enables you to avoid spurious server side processing,
-reducing both your server-side "think time" as well as your CPU
+reducing both your server-side think time as well as your CPU
 requirements on the server. Caching at the edge enables you to offload
 content from your origin, again serving it faster and cheaper.
 
@@ -2166,36 +2163,36 @@ There are a few essential caching policies you can employ.
 ### Immutable
 Any public content which you refer to from your pages and can change the
 reference to once the content changes, should be considered immutable.
-You can achieve that by have a content-addressable URL, so a URL which contains either a hash or a version of the content itself, and which changes by your build system once the content changed.
+You can achieve that by having a content-addressable URL: a URL which contains either a hash or a version of the content itself, and which changes by your build system once the content changed.
 You would also need to annotate the content with something like the following headers:
 `Cache-Control: public, immutable, max-age=315360000`.
 
 That would tell the cache server or the browser that the content will
 never change (or tell them that the content will not change in the next
 10 years, if they don't support the `immutable` keyword).
-It would enable them to avoid content revalidation for it, and know that
+It would enable them to avoid content revalidation, and know that
 if it's in the cache and needed by the page, it can be served as is.
 
-### Always fresh
-Any content which users navigate to directly through direct links or the
-URL bar (which is usually your HTML
-pages) should have a permanent URL, which does not change if the content
-does. Therefore we cannot declare such content to be immutable, as it
-will be impossible to modify it if we found an error in the page, a bug
+### Always Fresh
+Any content which users navigate to directly through links or the
+address bar (usually your HTML
+pages) should have a permanent URL that does not change if the content
+does. Therefore, we cannot declare such resources to be immutable, as it
+will be impossible to modify them if we found an error in the page, a bug,
 or a typo.
 
 You could argue that such content can be cacheable for relatively short
-times (e.g. hours). Unfortunately, that would make it very hard for you
+times (probably hours). Unfortunately, that would make it very hard for you
 to change the content within that time window if you need to ship unpredicted changes.
 As such, the safest choice, is to make sure the content gets
-re-validation with the server every single time. You can do that by
+revalidated with the server every single time. You can do that by
 using headers such as:
 `Cache-Control: no-cache`.
 
 ### Offload
 The problem with the previous approach is that it prevents origin and
-edge caches from offloading the content from your origin. That means
-that if the cache gets hit with 1000 requests per second, it needs to
+edge caches from offloading the content from your origin. If the cache
+gets hit with 1000 requests per second, it needs to
 relay those 1000 requests to the origin server, not providing much
 benefit as a cache to that type of content.
 
@@ -2211,13 +2208,13 @@ get revalidated at the origin, providing significant offload and time
 savings benefits.
 
 Alternatively, you can use caching directives specific to shared caches,
-such as `s-maxage` in order to make sure the content is cached in shared
+such as `s-maxage` to make sure the content is cached in shared
 caches for short periods of time, but will not be cached in the user's
 browser cache.
 
 ### Hold-till-told
 Another approach that is currently only feasible for origin or edge
-caches is "Hold till told". In short, the origin indicates the cache
+caches is "Hold till told". In short, the origin indicates to the cache
 server that the resource is infinitely cacheable, but reserves the right
 to purge that content if a bug is found, a typo was corrected or the
 wrong information was presented on that page and was then taken down.
@@ -2231,41 +2228,41 @@ Unfortunately, that method has no standard alternative at the moment.
 
 ## Service Workers
 Another great way to reduce the impact of latency and increase the power
-of caching in the browser is to use service workers.
+of caching in browsers is to use service workers.
 
 A Service Worker is a JavaScript-based network proxy in the browser,
 enabling the developer to inspect outgoing requests and incoming
 responses and manipulate them. As such, service workers are extremely
-powerful, and enable developer to go beyond the regular browser HTTP cache in caching their resources.
+powerful, and enable developers to go beyond the regular browser HTTP cache in caching their resources.
 They enable a bunch of extremely interesting and beneficial use-cases
 which weren't possible on the web before.
 
 ### Offline
 The basic use-case which service workers cover is offline support. Since
 they have access to requests and responses, as well as to the browser's
-cache API, they can use that in order to cache responses as they come
+cache API, they can use that to cache responses as they come
 in, and later use them if the user is offline. That enables sites to
 create a reliable offline experience, and serve their users even in
-shady or missing connectivity conditions.
+shaky or missing connectivity conditions.
 
-One of the patterns that emerged if "Offline first", where the
+One of the patterns that has emerged is "Offline first", where the
 previously cached content is served to the user before going to the
-network, providing them with near-instant experience, while the
+network, providing them with a near-instant experience, while the
 resources fetched from the network are used to update the content
 displayed to the user, once they arrive.
 
-### Constructing streamed responses
+### Constructing Streamed Responses
 The "offline-first" principle is easy to apply when your web application
-is a single-page app, but is not limited to that. You can get similar
+is a single-page app, but is not limited to that. You can achieve a similar
 impact by caching the static parts of your HTML content in your service
 worker's cache, and combine the cached content with content fetched from
 your server using the Streaming API.
 
-That enables the browser to start processing and displaying the static pieces of the
+That lets browsers start processing and displaying the static pieces of the
 HTML immediately, and fill in the gaps later with the content fetched
 from the server.
 
-### Compression decoding
+### Compression Decoding
 We mentioned the plans to include a compression API in the browser.
 Combining such an API with Service Workers can prove to be an extremely
 powerful tool. Right now, browsers have a "monopoly" on new compression
@@ -2275,21 +2272,21 @@ But a Service Worker based compression API can give such schemes a
 second chance.
 
 It can enable developers to create their own custom compression
-dictionaries and use them in service workers in order to achieve
+dictionaries and use them in service workers to achieve
 significantly better compression ratios.
 
-### Hold-till-told
+### Hold Till Told
 Another exciting aspect of Service Workers is that they enable
 in-the-browser hold-till-told caching semantics. The service worker
 cache can hold onto certain resources indefinitely, but purge them as
-soon as instructions from the server indicate it to.
+soon as instructions from the server tell it to.
 
-Such pages would need to build-in some refresh mechanism, which enables
-them to update themselves if they discover they have been purged after
-being served from the server. But while not being ideal, that's the
+Such pages would need to build-in some refresh mechanism to let
+them update themselves if they discover they have been purged after
+being served from the server. While not being ideal, that's the
 closest we can get to purge mechanisms on the web today.
 
-# Control over third parties
+# Control Over Third Parties
 One of open secrets in the web performance community is that improving
 your site's performance can make little difference if you introduce third
 party resources to your page that will slow it down.
