@@ -1761,13 +1761,12 @@ sooner rather than later.
 
 ## Images
 
-Images is another place where we can easily send our users
-content bytes which they don't need and use - either by sending
-oversized images or by sending them under-compressed.
+Images are another source of unnecessary content bytes. Too often,
+images are sent either oversized or under-compressed.
 
-This subject is way too-wide to be fully covered in this section. It has
-been covered by an entire chapter in [Smashing Book 5][smashing_book_5],
-as well as an [entire book][high_perf_images] dedicated just for image optimization.
+This subject is much too wide to be fully covered in this section. There's a
+chapter in [Smashing Book 5][smashing_book_5] about it,
+as well as an [entire book][high_perf_images] dedicated to image optimization.
 
 [high_perf_images]: https://www.akamai.com/us/en/multimedia/documents/content/e-book/akamai-oreilly-high-performance-images-e-book.pdf
 [smashing_book_5]: https://shop.smashingmagazine.com/products/smashing-book-5-real-life-responsive-web-design
@@ -1775,22 +1774,19 @@ as well as an [entire book][high_perf_images] dedicated just for image optimizat
 But I'll do my best to give a brief summary.
 
 ### Responsive Images
-The responsive images solutions goal is to enable developers to serve
-appropriately dimensioned images to their users, no matter their device
-dimensions and how big the images are on that device.
+The goal of responsive image solutions goal is to let developers serve
+appropriately sized images, no matter a user's device
+dimensions or how big the images are on that device.
 
-Using the responsive images
-solutions, and in particular `srcset` and `sizes`
-enables you to provide the browser with multiple alternative image
-sources and let the browser pick the one that's most fitting for the
+`srcset` and `sizes` in particular enable you to provide multiple alternative image
+sources, and letting browsers pick the one that's most fitting for the
 user's device.
 
-The `srcset` attribute declares multiple image alternatives to the
-browser, as well as their descriptors. `x` descriptors tell the browser
-about the image resource's density. `w` descriptors tell it about
+The `srcset` attribute declares several image alternatives to the
+browser, as well as their descriptors. `x` descriptors tell browsers
+about the image resource's density. `w` descriptors tell them about
 the image resource's width.
-
-These enable the browser to pick the right resource, based on the
+Browsers then pick the right resource based on the
 device's screen density as well as its viewport dimensions.
 
 Using `x` descriptors to serve a fixed width image may look something like:
@@ -1801,7 +1797,7 @@ Using `x` descriptors to serve a fixed width image may look something like:
         width="500" alt="The December wallpaper">
 ```
 
-Using `w` descriptors to serve an image which can be in many different dimensions:
+Using `w` descriptors to serve an image that can be in many different dimensions:
 
 ```
     <img src="panda_fallback.jpg"
@@ -1810,12 +1806,12 @@ Using `w` descriptors to serve an image which can be in many different dimension
          alt="A panda eating some bamboo.">
 ```
 
-The `sizes` attribute enables us to make the matching even tighter. When
-the browser is requesting the images, it still isn't aware of what their
-display dimensions would be (as layout may not have happened yet).
-`sizes` enables us to tell the browser what the image display dimensions
-would be in different breakpoints of the design, so the browser can
-calculate the ideal resource provided by `srcset` and its `w` descriptors.
+The `sizes` attribute can make the matching even tighter. When
+the browser requests the images, it isn't aware of their
+display dimensions (as layout may not have happened yet).
+`sizes` tells the browser the image display dimensions
+for different breakpoints of the design, so the browser can
+calculate the ideal resource provided by `srcset` and `w` descriptors.
 
 The sizes value could be relatively simple, just stating a percentage of
 the viewport, such as:
@@ -1843,38 +1839,38 @@ It can also become a bit more complex in more involved designs:
 ```
 
 #### Client Hints
-Client Hints is a content negotiation mechanism which can be also be
+Client Hints is a content negotiation mechanism that can be also be
 used to serve responsive images, among other resource types.
 
-Content negotiation means that the client indicates to the server various
-parameters about the resources that it is interested in, and the server
-uses that in order to send it with the right resource.
+In content negotiation the client provides the server various
+parameters about the resources it is interested in, and the server
+uses those to send the right resource.
 
 With Client-Hints, once the server has opted-in (using `Accept-CH` and
 `Accept-CH-Lifetime` headers), the browser can start sending the server
 information regarding its `DPR` (device pixel ratio, or screen density),
 `Viewport-Width` as well as the image's `Width` (if the image has a
-`sizes` attribute attached to it). It can also indicate whether the user
+`sizes` attribute). It can also indicate whether the user
 has opted-in to data savings mode, using the `Save-Data` client hint
 header.
 
-That enables the server to serve the right resource to the client,
+The server can then to serve the right resource to the client
 without requiring markup changes (or while requiring smaller ones).
 
 ### Image formats
-Another aspect of image optimization is properly compressing them. And
-the amount of gain we can get from image compression varies greatly
+Another aspect of image optimization is proper compression.
+The gains we can get from image compression vary greatly
 based on the image format we pick.
 
 Different browsers support different cutting-edge image formats, which
 means that serving the right image format in all cases requires some
-amount of sophistication.
+sophistication.
 
 Serving different image formats to different browsers can be done in a
 couple of ways.
 
-If you have control over your server, it's probably easier for you to
-use the image request `Accept` headers in order to detect if the browser
+If you have control over your server, it's probably easier to
+use the image request `Accept` headers to detect if the browser
 supports WebP, JPEG-XR or just the older (but reliable) JPEG and PNG.
 Then you can use your server-side logic to pick the ideal resource for
 that particular browser.
@@ -1892,19 +1888,19 @@ supports.
 ```
 
 ## Font subsetting
-Web fonts is another type of content where you can send your users
-excessive data. Fonts often contain full set of characters which fall
-outside of the basic Latin Unicode block (typically used in
+Web fonts are another type of content where you can send your users
+excessive data. Fonts often contain full sets of characters
+outside the basic Latin Unicode block (typically used in
 non-English languages), which may or may not be relevant for your
-content. These extra characters can add up, and if you're not using
+content. These extra characters add up, and if you're not using
 them, it might be best to drop them from the downloaded font entirely.
-At the same time, it's tricky to assume you what you will and will not
-be using, as e.g. names and locations may contain them. Those can also
-be casually added to your site by content creators (or your users - for
-user generated content) after you have subsetted the fonts.
+At the same time, it's tricky to assume what you will and will not
+be using, as personal and location names may contain them. They can also
+be added to your site by content creators (or in
+user-generated content) after you have subsetted the fonts.
 
-In cases where you can make assumptions about the content at build time,
-there are tools (e.g. [subfont][subfont] or [glyphhanger][glyphhanger]) which can help you subset your
+When you can make assumptions about the content at build time,
+there are tools (like [subfont][subfont] or [glyphhanger][glyphhanger]) that can help you subset
 fonts to the minimal subset you need.
 [subfont]: https://www.npmjs.com/package/subfont
 [glyphhanger]: https://github.com/filamentgroup/glyphhanger
