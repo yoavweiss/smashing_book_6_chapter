@@ -426,9 +426,8 @@ Those packets need to include both the headers and the critical content
 payload if you want your site to reach first paint without requiring
 extra round-trips.
 
-However, in many cases the network can
-handle significantly more than that. The server may know that when the
-connection is over a network it has seen before.
+However, in many cases the network can handle significantly more than that,
+particularly when the server makes the connection over a network it recognizes.
 
 The browser itself can also, in many cases, take an educated guess
 regarding the quality of the network it's on. It can base that on
@@ -512,7 +511,7 @@ flushing your HTML content early.
 
 When flushing HTML content early, you are committing to a certain HTTP response code, typically 200 OK. But the eventual response may end up having a different status code,
 perhaps a 404 or a 500 error if the server failed to find the required information in the database. In such a case, you would have
-to redirect or modify the content using JavaScript, to show the error. But because that content was served with a 200 response code, search engines may not recognize it as error content, and that error content may find itself
+to redirect or modify the content using JavaScript to show the error. But because that content was served with a 200 response code, search engines might not recognize it as error content, and that error content may find itself
 in search results. It also means we need to bake that eventual error logic into our
 client-side application logic, in order to make sure the negative user impact of
 that redirection is as unnoticeable as it can be.
@@ -720,13 +719,13 @@ important for their site. The [Priority Hints][priority_hints] proposal
 is an attempt to make those indications explicit, and let
 browsers take action based on them.
 
-The proposal aims for developers to include new "importance" attributes
+The proposal aims for developers to include a new "importance" attribute
 to various resource-downloading HTML elements, which will indicate
 whether the resource's priority should be upgraded or downgraded.
 
 That would clearly signal to browsers how to prioritize a resource
 against its counterparts, without binding them to direct developer
-instructions, which may not be accurate; for example, a blocking script with
+instructions, which may not be accurate; for example, a blocking script with a
 "low" importance attribute value is still blocking layout, and therefore should not have
 its priority downgraded.
 
@@ -764,7 +763,7 @@ dimensions are extremely important as they enable browsers to reserve
 space for the image and allow layout to stabilize.
 For progressive images, the byte range containing the
 first scan is significantly more important than the last bytes of the
-last scan. The former enable the browser to display the rough image (in
+final scan. The former enable the browser to display the rough image (in
 low quality), while the latter provides small quality improvements.
 
 So download schemes that would enable us to download the first scans of
@@ -1100,7 +1099,7 @@ guarantees that they'd run right before DOMContentLoaded and in order.
 Using `&lt;script defer>` only became a realistic option in the last few
 years.
 IE9 and earlier had a fatal issue with it, causing content that used `defer`
-to be [racily broken][ie9_defer] if the scripts actually had
+to be [broken][ie9_defer] under certain race conditions, if the scripts actually had
 interdependencies. Depending on the download order, deferred scripts
 that added HTML to the DOM (using `innerHTML`, for example) could have triggered the
 parser to start executing later scripts *before the first script had
@@ -1331,8 +1330,8 @@ A few things to note regarding lazy loading solutions:
   they will be discovered by the browser later.
 * The amount of in-viewport images may vary widely between different
   viewports, depending on your application.
-* You need to make sure that when the images have downloaded, that
-  doesn't cause a relayout of the entire content, as that will introduce
+* You need to make sure that there are no changes to the content's
+  layout when the images have downloaded, as that will introduce
 jank to the scrolling process.
 
 The first two points are hard to get right, as to include the in-viewport images in markup and lazy load
@@ -1407,7 +1406,7 @@ users while they are waiting for the full image to load.
 ## Fonts
 When classifying resources as rendering-critical and non-critical,
 fonts sit somewhere in the middle. On the one hand, fonts do not block
-the rendering of the page’s general layout. On the other,
+the page's layout, and therefore its rendering. On the other,
 they often do block the page’s headers or text from becoming visible,
 preventing the user from seeing the content.
 
@@ -1637,8 +1636,8 @@ evicted before your content does.
 Finally, unused CSS and JavaScript increases your site's memory footprint
 for no good reason, as the browser has to maintain the unused rules and
 code in memory for as long as your site is in memory. In low-memory
-environments like mobile, that could be the cause for your
-site's tab getting kicked out of memory when the user is not looking.
+environments like mobile, that could cause your
+site's tab to be kicked out of memory when the user is not looking.
 
 ## Compression API
 As mentioned above, the unused content on our sites is often
@@ -1854,8 +1853,8 @@ uses those to send the right resource.
 
 With Client-Hints, once the server has opted-in (using `Accept-CH` and
 `Accept-CH-Lifetime` headers), the browser can start sending the server
-information regarding its `DPR` (device pixel ratio, or screen density),
-`Viewport-Width` as well as the image's `Width` (if the image has a
+information using request headers: `DPR`,which stands for device pixel ratio, indicates the screen density of the device.
+`Viewport-Width`  indicates the width of the browser’s viewport. `Width` gives the server the display width of the image (if the image has a
 `sizes` attribute). It can also indicate whether the user
 has opted-in to data savings mode, using the `Save-Data` client hint
 header.
@@ -2236,11 +2235,12 @@ Unfortunately, that method has no standard alternative at the moment.
 Another great way to reduce the impact of latency and increase the power
 of caching in browsers is to use service workers.
 
-A Service Worker is a JavaScript-based network proxy in the browser,
+A service worker is a JavaScript-based network proxy in the browser,
 enabling the developer to inspect outgoing requests and incoming
 responses and manipulate them. As such, service workers are extremely
 powerful, and enable developers to go beyond the regular browser HTTP cache in caching their resources.
-They enable a bunch of extremely interesting and beneficial use-cases
+Lyza’s chapter covers them in depth, so you probably already know that
+service workers enable a bunch of extremely interesting and beneficial use-cases
 which weren't possible on the web before.
 
 ### Offline
@@ -2281,7 +2281,7 @@ It can enable developers to create their own custom compression
 dictionaries and use them in service workers to achieve
 significantly better compression ratios.
 
-### Hold Till Told
+### Hold Till Told in The Browser
 Another exciting aspect of Service Workers is that they enable
 in-the-browser hold-till-told caching semantics. The service worker
 cache can hold onto certain resources indefinitely, but purge them as
@@ -2355,7 +2355,7 @@ control what the iframes that load in your page are doing, so it cannot
 be used to enforce restrictions on ads loaded inside iframes, for
 instance.
 
-## Service Worker
+## Service Workers to Avoid SPOF
 We talked about Service Workers in the context of caching and offline
 support, but they also enable you to enforce various rules on outgoing
 requests, if they are running in the context of the main page.
